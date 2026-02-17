@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'; // Check of dit pad klopt 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
+export const dynamic = "force-dynamic";
+
 export default async function RaceDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
   
