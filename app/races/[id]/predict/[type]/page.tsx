@@ -2,8 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import PredictionSortableList from '@/components/PredictionSortableList';
 
-export const dynamic = "force-dynamic";
-
 export default async function PredictionPage({ params }: { params: { id: string, type: string } }) {
   const supabase = await createClient();
 
