@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Suspense } from "react"; // Toegevoegd
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -9,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "F1 Prediction Dashboard", // Even aangepast naar je eigen project!
+  description: "Manage and predict F1 races",
 };
 
 const geistSans = Geist({
@@ -33,7 +34,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          {/* De Suspense wikkel zorgt dat de build niet crasht bij data-ophaling */}
+          <Suspense fallback={<div className="p-6">Laden...</div>}>
+            {children}
+          </Suspense>
         </ThemeProvider>
       </body>
     </html>
