@@ -7,38 +7,53 @@ export default async function PredictionPage({
 }: { 
   params: Promise<{ id: string; type: string }> 
 }) {
-  // 1. Wacht op de parameters (Cruciaal!)
   const { id, type } = await params;
 
-  // 2. Beveiliging: Alleen deze types toestaan
   const validTypes = ['qualy', 'sprint', 'race'];
   if (!validTypes.includes(type)) {
-    console.error("Ongeldig type:", type);
     notFound();
   }
 
   const supabase = await createClient();
 
-  // 3. Haal data op
+  // Aangepaste query met de juiste kolomnaam: hex_color
   const [raceRes, driversRes] = await Promise.all([
     supabase.from('races').select('*').eq('id', id).single(),
     supabase.from('drivers')
-      .select('*, teams(team_name, color_code)')
+      .select(`
+        *,
+        teams!inner (
+          team_name,
+          hex_color
+        )
+      `)
       .eq('active', true)
   ]);
 
-  // Als de data er niet is, toon een foutmelding in plaats van een kale 404
-  if (!raceRes.data || !driversRes.data) {
+  // Als er een fout is, tonen we die nu duidelijk
+  if (raceRes.error || driversRes.error) {
+    console.error("Race Error:", raceRes.error);
+    console.error("Driver Error:", driversRes.error);
     return (
       <div className="p-20 text-white text-center">
-        <h1 className="text-2xl font-bold">Data niet gevonden</h1>
-        <p className="text-slate-400">De race of coureurs konden niet worden geladen uit de database.</p>
+        <h1 className="text-2xl font-bold text-red-500">Database Verbindingsfout</h1>
+        <p className="text-slate-400 mt-2">
+          {raceRes.error?.message || driversRes.error?.message}
+        </p>
       </div>
     );
   }
 
   const race = raceRes.data;
-  const drivers = driversRes.data;
+  // We mappen de data even om zodat de SortableList niet crasht op de nieuwe kolomnaam
+  const drivers = driversRes.data.map(d => ({
+    ...d,
+    teams: {
+      ...d.teams,
+      color_code: d.teams.hex_color // We hernoemen het hier intern naar wat de component verwacht
+    }
+  }));
+
   const displayTitle = type === 'qualy' ? 'Kwalificatie' : type === 'sprint' ? 'Sprint Race' : 'Hoofdrace';
 
   return (
@@ -56,7 +71,6 @@ export default async function PredictionPage({
           </p>
         </header>
 
-        {/* De interactieve lijst component */}
         <PredictionSortableList 
           initialDrivers={drivers} 
           raceId={id} 
