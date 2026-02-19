@@ -16,13 +16,14 @@ export default async function PredictionPage({
 
   const supabase = await createClient();
 
-  // Aangepaste query met de juiste kolomnaam: hex_color
+  // We verwijderen !inner om te voorkomen dat coureurs zonder team volledig verdwijnen
+  // En we halen hex_color op
   const [raceRes, driversRes] = await Promise.all([
     supabase.from('races').select('*').eq('id', id).single(),
     supabase.from('drivers')
       .select(`
         *,
-        teams!inner (
+        teams (
           team_name,
           hex_color
         )
@@ -30,10 +31,9 @@ export default async function PredictionPage({
       .eq('active', true)
   ]);
 
-  // Als er een fout is, tonen we die nu duidelijk
+  // Foutafhandeling voor database-connectie
   if (raceRes.error || driversRes.error) {
-    console.error("Race Error:", raceRes.error);
-    console.error("Driver Error:", driversRes.error);
+    console.error("Database Error:", raceRes.error || driversRes.error);
     return (
       <div className="p-20 text-white text-center">
         <h1 className="text-2xl font-bold text-red-500">Database Verbindingsfout</h1>
@@ -45,14 +45,32 @@ export default async function PredictionPage({
   }
 
   const race = raceRes.data;
-  // We mappen de data even om zodat de SortableList niet crasht op de nieuwe kolomnaam
-  const drivers = driversRes.data.map(d => ({
-    ...d,
-    teams: {
-      ...d.teams,
-      color_code: d.teams.hex_color // We hernoemen het hier intern naar wat de component verwacht
-    }
-  }));
+
+  // Verbeterde mapping: zorgt dat de lijst niet leeg blijft als de structuur iets afwijkt
+  const drivers = (driversRes.data || []).map(d => {
+    // Supabase relaties kunnen soms als array of als object binnenkomen
+    const teamInfo = Array.isArray(d.teams) ? d.teams[0] : d.teams;
+    
+    return {
+      ...d,
+      teams: {
+        team_name: teamInfo?.team_name || 'Privé-inschrijving',
+        color_code: teamInfo?.hex_color || '#334155' // fallback kleur als hex_color mist
+      }
+    };
+  });
+
+  // Veiligheidscheck: als er echt geen coureurs zijn
+  if (drivers.length === 0) {
+    return (
+      <div className="p-20 text-white text-center border border-dashed border-slate-800 rounded-3xl">
+        <h1 className="text-xl font-bold italic uppercase">Geen coureurs gevonden</h1>
+        <p className="text-slate-500 text-sm mt-2">
+          Er staan momenteel geen actieve coureurs in de database voor deze sessie.
+        </p>
+      </div>
+    );
+  }
 
   const displayTitle = type === 'qualy' ? 'Kwalificatie' : type === 'sprint' ? 'Sprint Race' : 'Hoofdrace';
 
@@ -71,6 +89,7 @@ export default async function PredictionPage({
           </p>
         </header>
 
+        {/* De lijst wordt alleen gerenderd als er drivers zijn */}
         <PredictionSortableList 
           initialDrivers={drivers} 
           raceId={id} 
