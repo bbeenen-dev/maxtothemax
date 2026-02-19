@@ -2,8 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import PredictionSortableList from '@/components/PredictionSortableList';
 
-// Dwing de pagina om altijd de nieuwste data te laden (voorkomt 404 door caching)
-export const dynamic = 'force-dynamic';
 
 export default async function PredictionPage({ 
   params 

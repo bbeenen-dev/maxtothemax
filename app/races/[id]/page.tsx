@@ -2,9 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-// Zorg dat de pagina altijd de laatste status van de deadlines ophaalt
-export const dynamic = 'force-dynamic';
-
 export default async function RaceDetailPage({ 
   params 
 }: { 
