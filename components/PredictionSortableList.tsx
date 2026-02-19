@@ -19,10 +19,9 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-// Importeer de save actie (pas het pad aan indien nodig)
 import { savePrediction } from '@/app/races/[id]/predict/[type]/actions';
 
-// Dit is het individuele coureur-blokje (ongewijzigd qua logica, alleen styling behouden)
+// Individuele coureur-rij
 function SortableDriver({ driver, index }: { driver: any, index: number }) {
   const {
     attributes,
@@ -36,8 +35,10 @@ function SortableDriver({ driver, index }: { driver: any, index: number }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 10 : 1,
-    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 50 : 1,
+    opacity: isDragging ? 0.6 : 1,
+    // touchAction: 'none' is essentieel om scrollen te voorkomen tijdens het slepen op mobiel
+    touchAction: 'none', 
   };
 
   return (
@@ -46,7 +47,9 @@ function SortableDriver({ driver, index }: { driver: any, index: number }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="flex items-center mb-2 bg-[#161a23] border border-slate-800 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing hover:border-slate-600 transition-colors"
+      className={`flex items-center mb-2 bg-[#161a23] border ${
+        isDragging ? 'border-red-600 shadow-2xl scale-[1.02]' : 'border-slate-800'
+      } rounded-lg overflow-hidden cursor-grab active:cursor-grabbing hover:border-slate-600 transition-all`}
     >
       <div className="w-12 h-12 flex items-center justify-center bg-black/20 font-bold text-slate-500">
         {index + 1}
@@ -79,9 +82,18 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
+  // De PointerSensor is geconfigureerd met een 'activationConstraint'. 
+  // Dit zorgt ervoor dat een klik pas een 'drag' wordt als de muis/vinger 5 pixels beweegt.
+  // Dit lost het probleem op waarbij items wel trillen maar niet verschuiven.
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, 
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -96,7 +108,6 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
     }
   }
 
-  // De nieuwe opslag-logica
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -104,7 +115,6 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
       const result = await savePrediction(raceId, type, orderedIds);
 
       if (result.success) {
-        // Stuur de gebruiker terug naar de race-detailpagina
         router.push(`/races/${raceId}`);
         router.refresh();
       } else {
