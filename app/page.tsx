@@ -21,7 +21,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0b0e14] z-10" />
         <div className="z-20 text-center px-4">
           <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4">
-            F1 <span className="text-red-600">PROGNOSIS</span>
+            F1 <span className="text-red-600">MaxToTheMax</span>
           </h1>
           <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-sm">Season 2026 Edition</p>
         </div>
