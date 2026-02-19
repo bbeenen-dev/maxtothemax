@@ -1,24 +1,35 @@
-import { createClient } from '@/lib/supabase/server'; // Check of dit pad klopt met jouw project
+import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function RaceDetailPage({ params }: { params: { id: string } }) {
+// Zorg dat de pagina altijd de laatste status van de deadlines ophaalt
+export const dynamic = 'force-dynamic';
+
+export default async function RaceDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> // In Next.js 15 is params een Promise
+}) {
+  // STAP 1: Wacht op de params
+  const { id } = await params;
+  
   const supabase = await createClient();
   
-  // Haal de race op inclusief de details die we nodig hebben
+  // STAP 2: Haal de race op met de 'id' die we nu echt hebben
   const { data: race } = await supabase
     .from('races')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
+  // Als de race niet bestaat in de database, toon 404
   if (!race) {
     notFound();
   }
 
   const nu = new Date();
 
-  // Deadlines controleren (UTC naar Local wordt automatisch afgehandeld door JS Date)
+  // Deadlines controleren
   const isQualyLocked = nu > new Date(race.qualifying_start);
   const isSprintLocked = race.has_sprint ? nu > new Date(race.sprint_race_start) : true;
   const isRaceLocked = nu > new Date(race.race_start);
@@ -74,7 +85,7 @@ export default async function RaceDetailPage({ params }: { params: { id: string 
               href={`/races/${race.id}/predict/qualy`}
             />
 
-            {/* SPRINT (Alleen als van toepassing) */}
+            {/* SPRINT */}
             {race.has_sprint && (
               <PredictionCard 
                 title="Sprint Race" 
@@ -98,7 +109,6 @@ export default async function RaceDetailPage({ params }: { params: { id: string 
   );
 }
 
-// Sub-component voor de knoppen/kaarten
 function PredictionCard({ title, time, isLocked, href }: { title: string, time: string, isLocked: boolean, href: string }) {
   const formattedTime = new Date(time).toLocaleString('nl-NL', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
