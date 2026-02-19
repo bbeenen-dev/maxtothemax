@@ -21,7 +21,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { savePrediction } from '@/app/races/[id]/predict/[type]/actions';
 
-// Individuele coureur-rij
 function SortableDriver({ driver, index }: { driver: any, index: number }) {
   const {
     attributes,
@@ -35,9 +34,9 @@ function SortableDriver({ driver, index }: { driver: any, index: number }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 50 : 1,
-    opacity: isDragging ? 0.6 : 1,
-    // touchAction: 'none' is essentieel om scrollen te voorkomen tijdens het slepen op mobiel
+    // Verhoog de zIndex aanzienlijk tijdens het slepen zodat hij 'over' de rest gaat
+    zIndex: isDragging ? 100 : 1,
+    // Voorkom dat browser-scrollen het slepen in de weg zit op het kaartje zelf
     touchAction: 'none', 
   };
 
@@ -47,11 +46,14 @@ function SortableDriver({ driver, index }: { driver: any, index: number }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex items-center mb-2 bg-[#161a23] border ${
-        isDragging ? 'border-red-600 shadow-2xl scale-[1.02]' : 'border-slate-800'
-      } rounded-lg overflow-hidden cursor-grab active:cursor-grabbing hover:border-slate-600 transition-all`}
+      /* Rood kader toegevoegd als isDragging true is */
+      className={`flex items-center mb-2 bg-[#161a23] border-2 transition-all rounded-lg overflow-hidden ${
+        isDragging 
+          ? 'border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.5)] scale-[1.05] opacity-90' 
+          : 'border-slate-800 hover:border-slate-600'
+      } cursor-grab active:cursor-grabbing`}
     >
-      <div className="w-12 h-12 flex items-center justify-center bg-black/20 font-bold text-slate-500">
+      <div className={`w-12 h-12 flex items-center justify-center font-bold ${isDragging ? 'bg-red-600/20 text-red-500' : 'bg-black/20 text-slate-500'}`}>
         {index + 1}
       </div>
       <div 
@@ -59,10 +61,12 @@ function SortableDriver({ driver, index }: { driver: any, index: number }) {
         style={{ backgroundColor: driver.teams?.color_code || '#ccc' }} 
       />
       <div className="p-3 flex-1">
-        <div className="font-bold italic uppercase text-sm">{driver.driver_name}</div>
+        <div className={`font-bold italic uppercase text-sm ${isDragging ? 'text-red-500' : 'text-white'}`}>
+          {driver.driver_name}
+        </div>
         <div className="text-[10px] text-slate-500 uppercase tracking-widest">{driver.teams?.team_name}</div>
       </div>
-      <div className="pr-4 opacity-30">
+      <div className={`pr-4 ${isDragging ? 'text-red-600 opacity-100' : 'opacity-30'}`}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
           <path d="M7 7h2v2H7V7zm0 4h2v2H7v-2zm4-4h2v2h-2V7zm0 4h2v2h-2v-2z" />
         </svg>
@@ -82,13 +86,10 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
-  // De PointerSensor is geconfigureerd met een 'activationConstraint'. 
-  // Dit zorgt ervoor dat een klik pas een 'drag' wordt als de muis/vinger 5 pixels beweegt.
-  // Dit lost het probleem op waarbij items wel trillen maar niet verschuiven.
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, 
+        distance: 8, // Iets grotere afstand om scrollen makkelijker te maken
       },
     }),
     useSensor(KeyboardSensor, {
@@ -98,7 +99,6 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-
     if (active.id !== over?.id) {
       setItems((items) => {
         const oldIndex = items.findIndex((i) => i.driver_id === active.id);
@@ -113,7 +113,6 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
     try {
       const orderedIds = items.map(item => item.driver_id);
       const result = await savePrediction(raceId, type, orderedIds);
-
       if (result.success) {
         router.push(`/races/${raceId}`);
         router.refresh();
@@ -128,28 +127,34 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
   };
 
   return (
-    <DndContext 
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext items={items.map(i => i.driver_id)} strategy={verticalListSortingStrategy}>
-        <div className="max-w-md mx-auto pb-20">
-          {items.map((driver, index) => (
-            <SortableDriver key={driver.driver_id} driver={driver} index={index} />
-          ))}
-          
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className={`w-full mt-6 bg-red-600 text-white font-black italic uppercase py-4 rounded-xl shadow-lg transition-all ${
-              isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500 active:scale-95'
-            }`}
-          >
-            {isSaving ? 'Bezig met opslaan...' : 'Sla Voorspelling Op'}
-          </button>
-        </div>
-      </SortableContext>
-    </DndContext>
+    /* overflow-y-auto zorgt voor de scrollbaarheid */
+    <div className="w-full max-w-md mx-auto h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+      <DndContext 
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={items.map(i => i.driver_id)} strategy={verticalListSortingStrategy}>
+          <div className="pb-4">
+            {items.map((driver, index) => (
+              <SortableDriver key={driver.driver_id} driver={driver} index={index} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {/* De knop staat nu buiten de DndContext maar binnen de scroll-container of eronder */}
+      <div className="sticky bottom-0 bg-[#0b0e14] pt-4 pb-8">
+        <button 
+          onClick={handleSave}
+          disabled={isSaving}
+          className={`w-full bg-red-600 text-white font-black italic uppercase py-4 rounded-xl shadow-[0_0_30px_rgba(220,38,38,0.3)] transition-all ${
+            isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500 active:scale-95'
+          }`}
+        >
+          {isSaving ? 'Bezig met opslaan...' : 'Sla Voorspelling Op'}
+        </button>
+      </div>
+    </div>
   );
 }
