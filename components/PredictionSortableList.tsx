@@ -9,7 +9,10 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -21,7 +24,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { savePrediction } from '@/app/races/[id]/predict/[type]/actions';
 
-// Definieer het type voor een Driver
+// 1. Interfaces strak gedefinieerd
 interface Driver {
   driver_id: string;
   driver_name: string;
@@ -31,14 +34,22 @@ interface Driver {
   };
 }
 
-// Definieer de Props voor de hoofdcomponent
 interface Props {
   initialDrivers: Driver[];
   raceId: string;
   type: string;
 }
 
-function SortableDriver({ driver, index }: { driver: Driver, index: number }) {
+// 2. De individuele component (nu ook met Overlay ondersteuning)
+function SortableDriver({ 
+  driver, 
+  index, 
+  isOverlay = false 
+}: { 
+  driver: Driver; 
+  index: number; 
+  isOverlay?: boolean 
+}) {
   const {
     attributes,
     listeners,
@@ -48,12 +59,12 @@ function SortableDriver({ driver, index }: { driver: Driver, index: number }) {
     isDragging
   } = useSortable({ id: driver.driver_id });
 
-  const style = {
-    // Translate is sneller dan Transform voor de browser
+  const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition: transition || undefined,
     zIndex: isDragging ? 100 : 1,
     touchAction: 'none', 
+    opacity: isDragging && !isOverlay ? 0.3 : 1, // Maak het item in de lijst transparant tijdens slepen
   };
 
   return (
@@ -63,20 +74,29 @@ function SortableDriver({ driver, index }: { driver: Driver, index: number }) {
       {...attributes}
       {...listeners}
       className={`flex items-center mb-2 bg-[#161a23] border-2 transition-all rounded-lg overflow-hidden ${
-        isDragging 
-          ? 'border-red-600 shadow-2xl scale-[1.05] z-50 ring-2 ring-red-600/20' 
+        isOverlay 
+          ? 'border-red-600 shadow-2xl scale-[1.02] z-[100]' 
           : 'border-slate-800'
       } cursor-grab active:cursor-grabbing`}
     >
-      <div className={`w-12 h-12 flex items-center justify-center font-bold ${isDragging ? 'bg-red-600 text-white' : 'bg-black/20 text-slate-500'}`}>
+      <div className={`w-12 h-12 flex items-center justify-center font-bold ${isOverlay ? 'bg-red-600 text-white' : 'bg-black/20 text-slate-500'}`}>
         {index + 1}
       </div>
       <div className="w-1.5 h-8 ml-2 rounded-full" style={{ backgroundColor: driver.teams?.color_code || '#ccc' }} />
       <div className="p-3 flex-1 text-left">
-        <div className="font-bold italic uppercase text-sm text-white">
+        <div className="font-bold italic uppercase text-sm text-white leading-none mb-1">
           {driver.driver_name}
         </div>
-        <div className="text-[10px] text-slate-500 uppercase tracking-widest">{driver.teams?.team_name}</div>
+        <div className="text-[10px] text-slate-500 uppercase tracking-widest leading-none">
+          {driver.teams?.team_name}
+        </div>
+      </div>
+      {/* Visuele indicator dat je dit kunt verslepen */}
+      <div className="pr-4 opacity-20">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" />
+          <circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" />
+        </svg>
       </div>
     </div>
   );
@@ -84,13 +104,15 @@ function SortableDriver({ driver, index }: { driver: Driver, index: number }) {
 
 export default function PredictionSortableList({ initialDrivers, raceId, type }: Props) {
   const [items, setItems] = useState<Driver[]>(initialDrivers);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3, 
+        delay: 100, // Wacht 100ms voor activatie: cruciaal voor scrollen op mobiel
+        tolerance: 5, // Vinger mag 5px bewegen voor activatie
       },
     }),
     useSensor(KeyboardSensor, {
@@ -98,12 +120,18 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
     })
   );
 
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    setActiveId(null);
+
     if (active.id !== over?.id) {
-      setItems((prevItems: Driver[]) => {
-        const oldIndex = prevItems.findIndex((i: Driver) => i.driver_id === active.id);
-        const newIndex = prevItems.findIndex((i: Driver) => i.driver_id === over?.id);
+      setItems((prevItems) => {
+        const oldIndex = prevItems.findIndex((i) => i.driver_id === active.id);
+        const newIndex = prevItems.findIndex((i) => i.driver_id === over?.id);
         return arrayMove(prevItems, oldIndex, newIndex);
       });
     }
@@ -112,7 +140,7 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const orderedIds = items.map((item: Driver) => item.driver_id);
+      const orderedIds = items.map((item) => item.driver_id);
       const result = await savePrediction(raceId, type, orderedIds);
       if (result.success) {
         router.push(`/races/${raceId}`);
@@ -128,25 +156,57 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
     }
   };
 
+  const activeDriver = activeId ? items.find(i => i.driver_id === activeId) : null;
+
   return (
-    <div className="flex flex-col h-[75vh]">
-      <div className="flex-1 overflow-y-auto pr-2 mb-4 custom-scrollbar">
+    <div className="flex flex-col h-[78vh]">
+      {/* DE AANPASSING VOOR DE SCROLLBALK:
+         'pr-12' geeft 48px ruimte aan de rechterkant voor de duim/scrollen.
+         Hierdoor worden de vakjes automatisch iets minder breed.
+      */}
+      <div className="flex-1 overflow-y-auto pr-12 pl-2 mb-4 custom-scrollbar">
         <DndContext 
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={items.map((i: Driver) => i.driver_id)} strategy={verticalListSortingStrategy}>
+          <SortableContext 
+            items={items.map((i) => i.driver_id)} 
+            strategy={verticalListSortingStrategy}
+          >
             <div className="space-y-1">
-              {items.map((driver: Driver, index: number) => (
-                <SortableDriver key={driver.driver_id} driver={driver} index={index} />
+              {items.map((driver, index) => (
+                <SortableDriver 
+                  key={driver.driver_id} 
+                  driver={driver} 
+                  index={index} 
+                />
               ))}
             </div>
           </SortableContext>
+
+          {/* DE AANPASSING VOOR HET NA-IJLEN:
+             DragOverlay zorgt ervoor dat het element echt 'loskomt' van de lijst
+             en direct de cursor/vinger volgt zonder vertraging in de DOM-structuur.
+          */}
+          <DragOverlay dropAnimation={{
+            sideEffects: defaultDropAnimationSideEffects({
+              styles: { active: { opacity: '0.3' } }
+            })
+          }}>
+            {activeDriver ? (
+              <SortableDriver 
+                driver={activeDriver} 
+                index={items.findIndex(i => i.driver_id === activeId)} 
+                isOverlay 
+              />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
-      <div className="pb-6">
+      <div className="pb-6 pr-12"> {/* Button ook uitlijnen met de lijstbreedte */}
         <button 
           onClick={handleSave}
           disabled={isSaving}
