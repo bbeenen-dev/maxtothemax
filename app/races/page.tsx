@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 // Forceert Next.js om de data telkens vers op te halen (belangrijk voor status-updates)
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 export default async function CalendarPage() {
   const supabase = await createClient();
