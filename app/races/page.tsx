@@ -1,17 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { headers } from 'next/headers'; // 1. Voeg deze import toe
-
-// 2. VERWIJDER de export const dynamic regel volledig!
+import { headers } from 'next/headers';
 
 export default async function CalendarPage() {
-  // 3. Roep headers() aan. Dit dwingt Next.js om de pagina 
-  // bij elk verzoek dynamisch te maken, omdat headers niet 
-  // vooraf bekend zijn. Dit lost je build-fout op.
+  // Forceert dynamische rendering om cache-problemen met de groene rand te voorkomen
   await headers(); 
 
   const supabase = await createClient();
-  
   
   // 1. Haal de huidige gebruiker op
   const { data: { user } } = await supabase.auth.getUser();
@@ -61,13 +56,15 @@ export default async function CalendarPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {races.map((race) => {
-              // Check welke voorspellingen de gebruiker heeft voor deze race
+              // Zoek voorspellingen voor deze specifieke race
               const preds = userPredictions?.filter(p => p.race_id === race.id) || [];
-              const hasQuali = preds.some(p => p.type === 'qualy');
-              const hasRace = preds.some(p => p.type === 'race');
-              const hasSprint = preds.some(p => p.type === 'sprint');
               
-              // Bepaal of dit een sprintweekend is op basis van de aanwezigheid van een tijd
+              // Verbeterde checks: we maken ze ongevoelig voor hoofdletters en spaties
+              const hasQuali = preds.some(p => p.type?.trim().toLowerCase() === 'qualy');
+              const hasRace = preds.some(p => p.type?.trim().toLowerCase() === 'race');
+              const hasSprint = preds.some(p => p.type?.trim().toLowerCase() === 'sprint');
+              
+              // Bepaal of dit een sprintweekend is (als de starttijd niet leeg is)
               const isSprintWeekend = race.sprint_race_start !== null && race.sprint_race_start !== undefined;
               
               // Bepaal of de voorspellingen compleet zijn
@@ -79,19 +76,26 @@ export default async function CalendarPage() {
                 <Link 
                   key={race.id} 
                   href={`/races/${race.id}`} 
-                  className={`group relative bg-[#161a23] border rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
+                  className={`group relative bg-[#161a23] border-2 rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
                     isComplete 
-                      ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.15)]' 
+                      ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.25)]' 
                       : 'border-slate-800 hover:border-red-600'
                   }`}
                 >
+                  {/* DEBUG INFO: Zo kun je zien wat de code detecteert */}
+                  <div className="absolute top-2 right-2 flex gap-2 text-[8px] font-mono text-slate-600">
+                    <span>Q:{hasQuali ? '✅' : '❌'}</span>
+                    {isSprintWeekend && <span>S:{hasSprint ? '✅' : '❌'}</span>}
+                    <span>R:{hasRace ? '✅' : '❌'}</span>
+                  </div>
+
                   <div className="relative z-10">
                     <div className="flex justify-between items-start mb-4">
                       <span className={`${isComplete ? 'text-green-500' : 'text-red-600'} font-black italic uppercase text-sm tracking-widest`}>
                         Round {race.round}
                       </span>
                       {isComplete && (
-                        <span className="text-[10px] bg-green-500/20 text-green-500 font-bold px-2 py-0.5 rounded uppercase">
+                        <span className="text-[10px] bg-green-500 text-white font-bold px-2 py-0.5 rounded uppercase">
                           Ready
                         </span>
                       )}
@@ -105,19 +109,19 @@ export default async function CalendarPage() {
                       {formatDateRange(race.fp1_start, race.race_start)}
                     </p>
 
-                    {/* Visuele status-indicatoren onderaan de kaart */}
+                    {/* Visuele balkjes status */}
                     <div className="flex gap-1.5 mt-4">
-                      <div className={`h-1 w-6 rounded-full ${hasQuali ? 'bg-green-500' : 'bg-white/10'}`} />
+                      <div className={`h-1.5 w-8 rounded-full ${hasQuali ? 'bg-green-500' : 'bg-white/10'}`} />
                       {isSprintWeekend && (
-                        <div className={`h-1 w-6 rounded-full ${hasSprint ? 'bg-green-500' : 'bg-white/10'}`} />
+                        <div className={`h-1.5 w-8 rounded-full ${hasSprint ? 'bg-green-500' : 'bg-white/10'}`} />
                       )}
-                      <div className={`h-1 w-6 rounded-full ${hasRace ? 'bg-green-500' : 'bg-white/10'}`} />
+                      <div className={`h-1.5 w-8 rounded-full ${hasRace ? 'bg-green-500' : 'bg-white/10'}`} />
                     </div>
                   </div>
                   
                   {/* Achtergrond Round nummer */}
                   <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-all ${
-                    isComplete ? 'text-green-500/[0.05]' : 'text-white/[0.02]'
+                    isComplete ? 'text-green-500/[0.08]' : 'text-white/[0.02]'
                   }`}>
                     {race.round}
                   </div>
