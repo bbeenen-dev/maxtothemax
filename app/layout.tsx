@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Suspense } from "react";
-import { Navbar } from "@/components/navbar"; // Importeer je nieuwe Navbar
+import { Navbar } from "@/components/navbar"; 
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -31,14 +31,18 @@ export default function RootLayout({
       <body className={`${geistSans.className} antialiased bg-[#0b0e14]`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark" // We zetten hem op dark omdat je F1 app een dark-vibe heeft
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          {/* De Navbar staat hier, zodat hij altijd boven de content blijft "plakken" */}
-          <Navbar />
+          {/* De Navbar moet in Suspense staan omdat het 'usePathname' gebruikt. 
+            Dit voorkomt de "Uncached data was accessed outside of <Suspense>" error bij de deploy.
+          */}
+          <Suspense fallback={<div className="h-16 w-full bg-[#0b0e14] border-b border-white/10" />}>
+            <Navbar />
+          </Suspense>
 
-          <Suspense fallback={<div className="p-6 text-white text-center">Laden...</div>}>
+          <Suspense fallback={<div className="p-12 text-white text-center font-bold italic uppercase tracking-widest opacity-50">Laden...</div>}>
             <main>
               {children}
             </main>
