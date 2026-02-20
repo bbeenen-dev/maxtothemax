@@ -1,11 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { headers } from 'next/headers'; // 1. Voeg deze import toe
 
-// Forceert Next.js om de data telkens vers op te halen (belangrijk voor status-updates)
-export const dynamic = 'force-dynamic';
+// 2. VERWIJDER de export const dynamic regel volledig!
 
 export default async function CalendarPage() {
+  // 3. Roep headers() aan. Dit dwingt Next.js om de pagina 
+  // bij elk verzoek dynamisch te maken, omdat headers niet 
+  // vooraf bekend zijn. Dit lost je build-fout op.
+  await headers(); 
+
   const supabase = await createClient();
+  
   
   // 1. Haal de huidige gebruiker op
   const { data: { user } } = await supabase.auth.getUser();
