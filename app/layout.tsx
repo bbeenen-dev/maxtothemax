@@ -35,15 +35,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {/* De Navbar moet in Suspense staan omdat het 'usePathname' gebruikt. 
-            Dit voorkomt de "Uncached data was accessed outside of <Suspense>" error bij de deploy.
-          */}
+          {/* De Navbar */}
           <Suspense fallback={<div className="h-16 w-full bg-[#0b0e14] border-b border-white/10" />}>
             <Navbar />
           </Suspense>
 
+          {/* De 'pt-2' zorgt voor de kleine afstand (ca. 0,5 cm) tussen de navbar en de foto/content */}
           <Suspense fallback={<div className="p-12 text-white text-center font-bold italic uppercase tracking-widest opacity-50">Laden...</div>}>
-            <main>
+            <main className="pt-2">
               {children}
             </main>
           </Suspense>
