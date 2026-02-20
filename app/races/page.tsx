@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
+// Forceert Next.js om de data telkens vers op te halen (belangrijk voor status-updates)
+export const revalidate = 0;
+
 export default async function CalendarPage() {
   const supabase = await createClient();
   
@@ -18,16 +21,17 @@ export default async function CalendarPage() {
     ? await supabase.from('predictions').select('race_id, type').eq('user_id', user.id)
     : { data: [] };
 
-  // Functie om de datumnotatie te fixen (bijv. 15 - 17 maart)
+  // Functie voor datumweergave: "15 - 17 maart 2026"
   const formatDateRange = (fp1: string, race: string) => {
     const start = new Date(fp1);
     const end = new Date(race);
-    const month = end.toLocaleDateString('nl-NL', { month: 'long' });
+    const options: Intl.DateTimeFormatOptions = { month: 'long' };
+    const month = end.toLocaleDateString('nl-NL', options);
     
     if (start.getMonth() === end.getMonth()) {
       return `${start.getDate()} - ${end.getDate()} ${month} ${end.getFullYear()}`;
     }
-    // Voor het geval een weekend over twee maanden splitst
+    
     const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
     return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month} ${end.getFullYear()}`;
   };
@@ -51,14 +55,17 @@ export default async function CalendarPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {races.map((race) => {
-              // Check of voorspellingen compleet zijn
+              // Check welke voorspellingen de gebruiker heeft voor deze race
               const preds = userPredictions?.filter(p => p.race_id === race.id) || [];
               const hasQuali = preds.some(p => p.type === 'qualy');
               const hasRace = preds.some(p => p.type === 'race');
               const hasSprint = preds.some(p => p.type === 'sprint');
               
-              const needsSprint = race.has_sprint; // Ik neem aan dat je een kolom 'has_sprint' hebt
-              const isComplete = needsSprint 
+              // Bepaal of dit een sprintweekend is op basis van de aanwezigheid van een tijd
+              const isSprintWeekend = race.sprint_race_start !== null && race.sprint_race_start !== undefined;
+              
+              // Bepaal of de voorspellingen compleet zijn
+              const isComplete = isSprintWeekend 
                 ? (hasQuali && hasRace && hasSprint) 
                 : (hasQuali && hasRace);
 
@@ -66,9 +73,9 @@ export default async function CalendarPage() {
                 <Link 
                   key={race.id} 
                   href={`/races/${race.id}`} 
-                  className={`group relative bg-[#161a23] border rounded-2xl p-6 transition-all overflow-hidden ${
+                  className={`group relative bg-[#161a23] border rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
                     isComplete 
-                      ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' 
+                      ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.15)]' 
                       : 'border-slate-800 hover:border-red-600'
                   }`}
                 >
@@ -91,9 +98,18 @@ export default async function CalendarPage() {
                     <p className="text-slate-500 text-sm font-medium">
                       {formatDateRange(race.fp1_start, race.race_start)}
                     </p>
+
+                    {/* Visuele status-indicatoren onderaan de kaart */}
+                    <div className="flex gap-1.5 mt-4">
+                      <div className={`h-1 w-6 rounded-full ${hasQuali ? 'bg-green-500' : 'bg-white/10'}`} />
+                      {isSprintWeekend && (
+                        <div className={`h-1 w-6 rounded-full ${hasSprint ? 'bg-green-500' : 'bg-white/10'}`} />
+                      )}
+                      <div className={`h-1 w-6 rounded-full ${hasRace ? 'bg-green-500' : 'bg-white/10'}`} />
+                    </div>
                   </div>
                   
-                  {/* Decoratieve achtergrond nummers */}
+                  {/* Achtergrond Round nummer */}
                   <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-all ${
                     isComplete ? 'text-green-500/[0.05]' : 'text-white/[0.02]'
                   }`}>
