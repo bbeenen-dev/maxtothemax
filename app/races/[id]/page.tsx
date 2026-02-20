@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Trophy, Timer } from 'lucide-react'; // Import toegevoegd om build error te voorkomen
+import { Trophy, Timer } from 'lucide-react'; 
 
 export default async function RaceDetailPage({ 
   params 
@@ -47,10 +47,10 @@ export default async function RaceDetailPage({
           </div>
         </div>
 
-        {/* Sectie: Winnaars van vorig jaar (Nu compacter in hoogte) */}
+        {/* Sectie: Winnaars van vorig jaar (Gekoppeld aan juiste database velden) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-8">
           
-          {/* Kaart: Winner 2025 */}
+          {/* Kaart: Winner 2025 (past_winners) */}
           <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 relative overflow-hidden group">
             <div className="relative z-10 flex items-center gap-3">
               <div className="bg-red-600/10 p-2 rounded-lg">
@@ -61,16 +61,16 @@ export default async function RaceDetailPage({
                   Winner 2025
                 </p>
                 <h3 className="text-lg md:text-xl font-black italic uppercase text-white leading-none">
-                  {race.winner_2025 || "Nog onbekend"}
+                  {race.past_winners || "Nog onbekend"}
                 </h3>
               </div>
             </div>
-            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
-              01
+            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none uppercase">
+              Win
             </div>
           </div>
 
-          {/* Kaart: Pole Position 2025 */}
+          {/* Kaart: Pole Position 2025 (past_qualiwinner) */}
           <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 relative overflow-hidden group">
             <div className="relative z-10 flex items-center gap-3">
               <div className="bg-blue-600/10 p-2 rounded-lg">
@@ -81,11 +81,11 @@ export default async function RaceDetailPage({
                   Pole 2025
                 </p>
                 <h3 className="text-lg md:text-xl font-black italic uppercase text-white leading-none">
-                  {race.pole_2025 || "Nog onbekend"}
+                  {race.past_qualiwinner || "Nog onbekend"}
                 </h3>
               </div>
             </div>
-            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
+            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none uppercase">
               P1
             </div>
           </div>
