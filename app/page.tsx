@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 export default async function HomePage() {
   const supabase = await createClient();
   
-  // 1. Haal de huidige gebruiker op (nodig voor de streepjes)
+  // 1. Haal de huidige gebruiker op
   const { data: { user } } = await supabase.auth.getUser();
 
   // 2. Haal de eerstvolgende race op
@@ -17,25 +17,40 @@ export default async function HomePage() {
 
   const nextRace = nextRaces?.[0];
 
-  // 3. Haal voorspellingen op voor de streepjes-status
-  let predictions: any[] = [];
+  // 3. Haal voorspellingen op uit de 3 verschillende tabellen (net als in de kalender)
+  let userPreds = { hasQuali: false, hasRace: false, hasSprint: false };
+
   if (user && nextRace) {
-    const { data } = await supabase
-      .from('predictions')
-      .select('prediction_type')
-      .eq('user_id', user.id)
-      .eq('race_id', nextRace.id);
-    predictions = data || [];
+    const [racePreds, qualiPreds, sprintPreds] = await Promise.all([
+      supabase.from('predictions_race').select('id').eq('user_id', user.id).eq('race_id', nextRace.id),
+      supabase.from('predictions_qualifying').select('id').eq('user_id', user.id).eq('race_id', nextRace.id),
+      supabase.from('predictions_sprint').select('id').eq('user_id', user.id).eq('race_id', nextRace.id),
+    ]);
+
+    userPreds = {
+      hasRace: (racePreds.data?.length ?? 0) > 0,
+      hasQuali: (qualiPreds.data?.length ?? 0) > 0,
+      hasSprint: (sprintPreds.data?.length ?? 0) > 0,
+    };
   }
 
-  // Helpers
-  const hasPred = (type: string) => predictions.some(p => p.prediction_type === type);
-  
-  const formatDateRange = (start: string, end: string) => {
-    const s = new Date(start);
-    const e = new Date(end);
-    const months = ['JAN', 'FEB', 'MRT', 'APR', 'MEI', 'JUN', 'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEC'];
-    return `${s.getDate()} - ${e.getDate()} ${months[e.getMonth()]}`;
+  // 4. Check of het een sprintweekend is
+  const isSprintWeekend = nextRace?.sprint_race_start !== null && nextRace?.sprint_race_start !== undefined;
+
+  // 5. Datum format helper (exact uit je kalender code)
+  const formatDateRange = (fp1: string, race: string) => {
+    if (!fp1 || !race) return "";
+    const start = new Date(fp1);
+    const end = new Date(race);
+    const options: Intl.DateTimeFormatOptions = { month: 'long' };
+    const month = end.toLocaleDateString('nl-NL', options);
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()} - ${end.getDate()} ${month} ${end.getFullYear()}`;
+    }
+    
+    const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
+    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month} ${end.getFullYear()}`;
   };
 
   return (
@@ -48,7 +63,6 @@ export default async function HomePage() {
           alt="Max Verstappen Red Bull 2026" 
           className="absolute inset-0 w-full h-full object-cover object-center scale-105"
         />
-        
         <div className="absolute inset-0 bg-black/40 z-10" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0b0e14]/20 to-[#0b0e14] z-20" />
         
@@ -66,17 +80,19 @@ export default async function HomePage() {
       <div className="max-w-6xl mx-auto px-6 -mt-10 md:-mt-20 relative z-40 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* KAART 1: De Volgende Race met streepjes en datum */}
+          {/* KAART 1: De Volgende Race */}
           <div className="md:col-span-2 bg-[#161a23]/95 backdrop-blur-sm border border-slate-800 rounded-3xl p-8 shadow-2xl overflow-hidden relative group">
             <div className="relative z-10">
               <div className="flex justify-between items-start">
                 <span className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full italic shadow-lg">Next Event</span>
                 
-                {/* Status streepjes */}
-                <div className="flex gap-1.5 bg-black/20 p-2 rounded-lg backdrop-blur-md">
-                  <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${hasPred('qualifying') ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-slate-700'}`} />
-                  <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${hasPred('sprint') ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-slate-700'}`} />
-                  <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${hasPred('race') ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'bg-slate-700'}`} />
+                {/* Status streepjes (Logica uit kalender met groene kleur) */}
+                <div className="flex gap-1.5 bg-black/40 p-2 rounded-lg backdrop-blur-md">
+                  <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${userPreds.hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-white/10'}`} title="Qualy" />
+                  {isSprintWeekend && (
+                    <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${userPreds.hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-white/10'}`} title="Sprint" />
+                  )}
+                  <div className={`w-8 h-1.5 rounded-full transition-all duration-500 ${userPreds.hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-white/10'}`} title="Race" />
                 </div>
               </div>
 
@@ -91,8 +107,8 @@ export default async function HomePage() {
                 {nextRace && (
                   <>
                     <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                    <p className="text-red-600 font-black italic uppercase text-sm tracking-tight">
-                      {formatDateRange(nextRace.race_start, nextRace.race_end)}
+                    <p className="text-slate-400 text-sm font-medium">
+                      {formatDateRange(nextRace.fp1_start, nextRace.race_start)}
                     </p>
                   </>
                 )}
@@ -113,7 +129,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* RECHTERKANT: Snelmenu (zonder kalender) */}
+          {/* RECHTERKANT */}
           <div className="space-y-6">
             <Link href="/predictions/season" className="block group">
               <div className="bg-gradient-to-br from-red-900/40 to-red-600/10 border border-red-900/50 p-8 rounded-2xl hover:border-red-500 transition-all shadow-lg h-full flex flex-col justify-center">
@@ -128,7 +144,6 @@ export default async function HomePage() {
                <div className="absolute top-2 right-2 px-2 py-1 bg-slate-800 text-[10px] font-bold text-slate-500 rounded uppercase">Soon</div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
