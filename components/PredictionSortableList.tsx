@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DndContext, 
@@ -40,7 +40,7 @@ interface Props {
   type: string;
 }
 
-// 2. De individuele component (nu ook met Overlay ondersteuning)
+// 2. De individuele component
 function SortableDriver({ 
   driver, 
   index, 
@@ -64,7 +64,7 @@ function SortableDriver({
     transition: transition || undefined,
     zIndex: isDragging ? 100 : 1,
     touchAction: 'none', 
-    opacity: isDragging && !isOverlay ? 0.3 : 1, // Maak het item in de lijst transparant tijdens slepen
+    opacity: isDragging && !isOverlay ? 0.3 : 1,
   };
 
   return (
@@ -91,7 +91,6 @@ function SortableDriver({
           {driver.teams?.team_name}
         </div>
       </div>
-      {/* Visuele indicator dat je dit kunt verslepen */}
       <div className="pr-4 opacity-20">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
           <circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" />
@@ -106,13 +105,19 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
   const [items, setItems] = useState<Driver[]>(initialDrivers);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [mounted, setMounted] = useState(false); // Fix voor client-side hydration
   const router = useRouter();
+
+  // Zorg ervoor dat dnd-kit pas rendert als de browser klaar is
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 100, // Wacht 100ms voor activatie: cruciaal voor scrollen op mobiel
-        tolerance: 5, // Vinger mag 5px bewegen voor activatie
+        delay: 100,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -156,14 +161,17 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
     }
   };
 
+  // Als de component nog niet gemount is, tonen we een placeholder 
+  // Dit voorkomt de "client-side exception" error
+  if (!mounted) {
+    return <div className="p-10 text-center text-slate-500 italic uppercase font-black animate-pulse">Lijst laden...</div>;
+  }
+
   const activeDriver = activeId ? items.find(i => i.driver_id === activeId) : null;
 
   return (
     <div className="flex flex-col h-[78vh]">
-      {/* DE AANPASSING VOOR DE SCROLLBALK:
-         'pr-12' geeft 48px ruimte aan de rechterkant voor de duim/scrollen.
-         Hierdoor worden de vakjes automatisch iets minder breed.
-      */}
+      {/* Brede scroll-zone (pr-12) */}
       <div className="flex-1 overflow-y-auto pr-12 pl-2 mb-4 custom-scrollbar">
         <DndContext 
           sensors={sensors}
@@ -186,10 +194,7 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
             </div>
           </SortableContext>
 
-          {/* DE AANPASSING VOOR HET NA-IJLEN:
-             DragOverlay zorgt ervoor dat het element echt 'loskomt' van de lijst
-             en direct de cursor/vinger volgt zonder vertraging in de DOM-structuur.
-          */}
+          {/* Overlay voor direct na-ijlen te voorkomen */}
           <DragOverlay dropAnimation={{
             sideEffects: defaultDropAnimationSideEffects({
               styles: { active: { opacity: '0.3' } }
@@ -206,7 +211,7 @@ export default function PredictionSortableList({ initialDrivers, raceId, type }:
         </DndContext>
       </div>
 
-      <div className="pb-6 pr-12"> {/* Button ook uitlijnen met de lijstbreedte */}
+      <div className="pb-6 pr-12">
         <button 
           onClick={handleSave}
           disabled={isSaving}
