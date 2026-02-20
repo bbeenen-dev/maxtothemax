@@ -4,11 +4,33 @@ import Link from 'next/link';
 export default async function CalendarPage() {
   const supabase = await createClient();
   
-  // Haal alle races op voor 2026 uit de database
+  // 1. Haal de huidige gebruiker op
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 2. Haal alle races op
   const { data: races } = await supabase
     .from('races')
     .select('*')
     .order('round', { ascending: true });
+
+  // 3. Haal de voorspellingen van de gebruiker op
+  const { data: userPredictions } = user 
+    ? await supabase.from('predictions').select('race_id, type').eq('user_id', user.id)
+    : { data: [] };
+
+  // Functie om de datumnotatie te fixen (bijv. 15 - 17 maart)
+  const formatDateRange = (fp1: string, race: string) => {
+    const start = new Date(fp1);
+    const end = new Date(race);
+    const month = end.toLocaleDateString('nl-NL', { month: 'long' });
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()} - ${end.getDate()} ${month} ${end.getFullYear()}`;
+    }
+    // Voor het geval een weekend over twee maanden splitst
+    const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
+    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month} ${end.getFullYear()}`;
+  };
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-6 md:p-12">
@@ -18,49 +40,68 @@ export default async function CalendarPage() {
             F1 Kalender <span className="text-red-600">2026</span>
           </h1>
           <p className="text-slate-400 mt-2 uppercase tracking-widest font-bold text-sm">
-            Voorspel elk race-weekend en verzamel punten
+            {user ? 'Check je voorspellingen per weekend' : 'Log in om te voorspellen'}
           </p>
         </header>
 
         {!races || races.length === 0 ? (
           <div className="bg-[#161a23] border border-dashed border-slate-700 p-12 rounded-3xl text-center">
-            <p className="text-slate-500 font-medium">De kalender is momenteel leeg. Voeg races toe in de database!</p>
+            <p className="text-slate-500 font-medium">De kalender is leeg.</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {races.map((race) => (
-              <Link 
-                key={race.id} 
-                href={`/races/${race.id}`} 
-                className="group relative bg-[#161a23] border border-slate-800 rounded-2xl p-6 hover:border-red-600 transition-all hover:shadow-[0_0_30px_rgba(220,38,38,0.1)] overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-red-600 font-black italic uppercase text-sm tracking-widest">
-                      Round {race.round}
-                    </span>
-                    <span className="bg-black/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded">
-                      {race.location_code}
-                    </span>
+            {races.map((race) => {
+              // Check of voorspellingen compleet zijn
+              const preds = userPredictions?.filter(p => p.race_id === race.id) || [];
+              const hasQuali = preds.some(p => p.type === 'qualy');
+              const hasRace = preds.some(p => p.type === 'race');
+              const hasSprint = preds.some(p => p.type === 'sprint');
+              
+              const needsSprint = race.has_sprint; // Ik neem aan dat je een kolom 'has_sprint' hebt
+              const isComplete = needsSprint 
+                ? (hasQuali && hasRace && hasSprint) 
+                : (hasQuali && hasRace);
+
+              return (
+                <Link 
+                  key={race.id} 
+                  href={`/races/${race.id}`} 
+                  className={`group relative bg-[#161a23] border rounded-2xl p-6 transition-all overflow-hidden ${
+                    isComplete 
+                      ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' 
+                      : 'border-slate-800 hover:border-red-600'
+                  }`}
+                >
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`${isComplete ? 'text-green-500' : 'text-red-600'} font-black italic uppercase text-sm tracking-widest`}>
+                        Round {race.round}
+                      </span>
+                      {isComplete && (
+                        <span className="text-[10px] bg-green-500/20 text-green-500 font-bold px-2 py-0.5 rounded uppercase">
+                          Ready
+                        </span>
+                      )}
+                    </div>
+                    
+                    <h2 className="text-2xl font-black italic uppercase mb-1">
+                      {race.race_name}
+                    </h2>
+                    
+                    <p className="text-slate-500 text-sm font-medium">
+                      {formatDateRange(race.fp1_start, race.race_start)}
+                    </p>
                   </div>
-                  <h2 className="text-2xl font-black italic uppercase group-hover:text-white transition-colors mb-1">
-                    {race.race_name}
-                  </h2>
-                  <p className="text-slate-500 text-sm font-medium">
-                    {new Date(race.race_start).toLocaleDateString('nl-NL', { 
-                      day: 'numeric', 
-                      month: 'long', 
-                      year: 'numeric' 
-                    })}
-                  </p>
-                </div>
-                
-                {/* Decoratieve achtergrond nummers */}
-                <div className="absolute -right-4 -bottom-6 text-8xl font-black italic text-white/[0.02] group-hover:text-white/[0.05] transition-all">
-                  {race.round}
-                </div>
-              </Link>
-            ))}
+                  
+                  {/* Decoratieve achtergrond nummers */}
+                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-all ${
+                    isComplete ? 'text-green-500/[0.05]' : 'text-white/[0.02]'
+                  }`}>
+                    {race.round}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
