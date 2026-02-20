@@ -1,25 +1,22 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Trophy, Timer } from 'lucide-react'; // Import toegevoegd om build error te voorkomen
 
 export default async function RaceDetailPage({ 
   params 
 }: { 
-  params: Promise<{ id: string }> // In Next.js 15 is params een Promise
+  params: Promise<{ id: string }> 
 }) {
-  // STAP 1: Wacht op de params
   const { id } = await params;
-  
   const supabase = await createClient();
   
-  // STAP 2: Haal de race op met de 'id' die we nu echt hebben
   const { data: race } = await supabase
     .from('races')
     .select('*')
     .eq('id', id)
     .single();
 
-  // Als de race niet bestaat in de database, toon 404
   if (!race) {
     notFound();
   }
@@ -50,54 +47,49 @@ export default async function RaceDetailPage({
           </div>
         </div>
 
-        {/* Info Sectie */}
-        {/* Sectie: Winnaars van vorig jaar */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-  
-  {/* Kaart: Winner 2025 */}
-  <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-    <div className="relative z-10 flex items-center gap-4">
-      {/* Een kleiner icoon of indicator */}
-      <div className="bg-red-600/10 p-2 rounded-lg">
-        <Trophy className="w-5 h-5 text-red-600" />
-      </div>
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
-          Winner 2025
-        </p>
-        <h3 className="text-xl font-black italic uppercase text-white leading-none">
-          {race.winner_2025 || "Nog onbekend"}
-        </h3>
-      </div>
-    </div>
-    {/* Subtiel nummer op de achtergrond voor diepte, maar heel klein */}
-    <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
-      01
-    </div>
-  </div>
+        {/* Sectie: Winnaars van vorig jaar (Nu compacter in hoogte) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-8">
+          
+          {/* Kaart: Winner 2025 */}
+          <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 relative overflow-hidden group">
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="bg-red-600/10 p-2 rounded-lg">
+                <Trophy className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
+                  Winner 2025
+                </p>
+                <h3 className="text-lg md:text-xl font-black italic uppercase text-white leading-none">
+                  {race.winner_2025 || "Nog onbekend"}
+                </h3>
+              </div>
+            </div>
+            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
+              01
+            </div>
+          </div>
 
-  {/* Kaart: Pole Position 2025 */}
-  <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-    <div className="relative z-10 flex items-center gap-4">
-      <div className="bg-blue-600/10 p-2 rounded-lg">
-        <Timer className="w-5 h-5 text-blue-600" />
-      </div>
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
-          Pole 2025
-        </p>
-        <h3 className="text-xl font-black italic uppercase text-white leading-none">
-          {race.pole_2025 || "Nog onbekend"}
-        </h3>
-      </div>
-    </div>
-    <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
-      P1
-    </div>
-  </div>
-
-</div>
-             
+          {/* Kaart: Pole Position 2025 */}
+          <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 relative overflow-hidden group">
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="bg-blue-600/10 p-2 rounded-lg">
+                <Timer className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
+                  Pole 2025
+                </p>
+                <h3 className="text-lg md:text-xl font-black italic uppercase text-white leading-none">
+                  {race.pole_2025 || "Nog onbekend"}
+                </h3>
+              </div>
+            </div>
+            <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
+              P1
+            </div>
+          </div>
+        </div>
 
         {/* Voorspelling Knoppen */}
         <div className="space-y-6">
@@ -106,7 +98,6 @@ export default async function RaceDetailPage({
           </h2>
 
           <div className="grid gap-4">
-            {/* KWALIFICATIE */}
             <PredictionCard 
               title="Kwalificatie" 
               time={race.qualifying_start} 
@@ -114,7 +105,6 @@ export default async function RaceDetailPage({
               href={`/races/${race.id}/predict/qualy`}
             />
 
-            {/* SPRINT */}
             {race.has_sprint && (
               <PredictionCard 
                 title="Sprint Race" 
@@ -124,7 +114,6 @@ export default async function RaceDetailPage({
               />
             )}
 
-            {/* HOOFDRACE */}
             <PredictionCard 
               title="Hoofdrace" 
               time={race.race_start} 
