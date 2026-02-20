@@ -21,7 +21,7 @@ export default async function HomePage() {
       <div className="relative w-full h-[300px] md:h-[450px] flex items-center justify-center overflow-hidden">
         {/* De Foto */}
         <img 
-          src="/hero-2026.jpg" 
+          src="/hero-2026.JPG" 
           alt="Max Verstappen Red Bull 2026" 
           className="absolute inset-0 w-full h-full object-cover object-center scale-105"
         />
