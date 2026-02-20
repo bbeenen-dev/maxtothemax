@@ -34,12 +34,7 @@ export default async function RaceDetailPage({
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
-        
-        {/* Navigatie */}
-        <Link href="/races" className="text-red-600 font-bold text-sm uppercase tracking-widest hover:underline mb-6 block">
-          ← Terug naar kalender
-        </Link>
-
+                
         {/* Race Header */}
         <div className="bg-gradient-to-r from-red-600 to-red-800 p-8 rounded-t-2xl shadow-2xl">
           <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">
@@ -56,16 +51,53 @@ export default async function RaceDetailPage({
         </div>
 
         {/* Info Sectie */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-800 border-x border-b border-slate-800 rounded-b-2xl overflow-hidden mb-12">
-          <div className="bg-[#161a23] p-6 text-center">
-            <p className="text-slate-400 text-xs uppercase font-bold mb-1">Winnaar 2025</p>
-            <p className="text-2xl font-black italic">{race.past_winners?.['2025'] || 'Nog onbekend'}</p>
-          </div>
-          <div className="bg-[#161a23] p-6 text-center border-l border-slate-800">
-            <p className="text-slate-400 text-xs uppercase font-bold mb-1">Pole Position 2025</p>
-            <p className="text-2xl font-black italic">{race.past_qualiwinner?.['2025'] || 'Nog onbekend'}</p>
-          </div>
-        </div>
+        {/* Sectie: Winnaars van vorig jaar */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+  
+  {/* Kaart: Winner 2025 */}
+  <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+    <div className="relative z-10 flex items-center gap-4">
+      {/* Een kleiner icoon of indicator */}
+      <div className="bg-red-600/10 p-2 rounded-lg">
+        <Trophy className="w-5 h-5 text-red-600" />
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
+          Winner 2025
+        </p>
+        <h3 className="text-xl font-black italic uppercase text-white leading-none">
+          {race.winner_2025 || "Nog onbekend"}
+        </h3>
+      </div>
+    </div>
+    {/* Subtiel nummer op de achtergrond voor diepte, maar heel klein */}
+    <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
+      01
+    </div>
+  </div>
+
+  {/* Kaart: Pole Position 2025 */}
+  <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+    <div className="relative z-10 flex items-center gap-4">
+      <div className="bg-blue-600/10 p-2 rounded-lg">
+        <Timer className="w-5 h-5 text-blue-600" />
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none mb-1">
+          Pole 2025
+        </p>
+        <h3 className="text-xl font-black italic uppercase text-white leading-none">
+          {race.pole_2025 || "Nog onbekend"}
+        </h3>
+      </div>
+    </div>
+    <div className="absolute right-2 bottom-0 text-4xl font-black italic text-white/[0.02] select-none">
+      P1
+    </div>
+  </div>
+
+</div>
+             
 
         {/* Voorspelling Knoppen */}
         <div className="space-y-6">
