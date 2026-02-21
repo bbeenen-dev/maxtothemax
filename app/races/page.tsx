@@ -27,15 +27,17 @@ export default async function CalendarPage() {
   }
 
   const formatDateRange = (fp1: string, race: string) => {
+    if (!fp1 || !race) return "";
     const start = new Date(fp1);
     const end = new Date(race);
-    const options: Intl.DateTimeFormatOptions = { month: 'long' };
+    const options: Intl.DateTimeFormatOptions = { month: 'short' }; // 'short' voor compacte weergave naast de stad
     const month = end.toLocaleDateString('nl-NL', options);
+    
     if (start.getMonth() === end.getMonth()) {
-      return `${start.getDate()} - ${end.getDate()} ${month} ${end.getFullYear()}`;
+      return `${start.getDate()}-${end.getDate()} ${month}`;
     }
     const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
-    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month} ${end.getFullYear()}`;
+    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month}`;
   };
 
   return (
@@ -83,20 +85,25 @@ export default async function CalendarPage() {
                       )}
                     </div>
                     
-                    <h2 className="text-2xl font-black italic uppercase mb-1">{race.race_name}</h2>
-                    <p className="text-slate-500 text-sm font-medium">{formatDateRange(race.fp1_start, race.race_start)}</p>
+                    <h2 className="text-2xl font-black italic uppercase mb-1 leading-tight">{race.race_name}</h2>
+                    
+                    {/* Nieuwe sectie voor City Name en Datum */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-bold uppercase text-xs tracking-wider">
+                        {race.city_name || "Unknown City"}
+                      </p>
+                      <span className="text-slate-600">•</span>
+                      <p className="text-slate-400 text-xs font-medium">
+                        {formatDateRange(race.fp1_start, race.race_start)}
+                      </p>
+                    </div>
 
                     {/* De Streepjes (Indicators) */}
                     <div className="flex gap-1.5 mt-5">
-                      {/* Qualifying streepje */}
                       <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
-                      
-                      {/* Sprint streepje (indien van toepassing) */}
                       {isSprintWeekend && (
                         <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
                       )}
-                      
-                      {/* Race streepje */}
                       <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
                     </div>
                   </div>
