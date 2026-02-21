@@ -27,7 +27,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // suppressHydrationWarning is hier verplicht voor ThemeProvider
     <html lang="en" suppressHydrationWarning>
       <body 
         className={`${geistSans.className} antialiased bg-[#0b0e14] min-h-screen`}
@@ -36,11 +35,13 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          forcedTheme="dark" // Dwingt dark mode af om hydration fouten op mobiel te voorkomen
+          forcedTheme="dark"
           disableTransitionOnChange
         >
-          {/* De Navbar hoeft meestal niet in Suspense tenzij hij intern zware data laadt */}
-          <Navbar />
+          {/* De Navbar MOET in Suspense omdat deze client-side hooks (useRouter) gebruikt */}
+          <Suspense fallback={<div className="h-16 w-full bg-[#0b0e14] border-b border-white/5" />}>
+            <Navbar />
+          </Suspense>
 
           <main className="pt-2">
             <Suspense fallback={
