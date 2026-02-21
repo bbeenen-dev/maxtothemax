@@ -2,7 +2,6 @@
 
 import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// We gebruiken de SSR browser client voor betere cookie-handling
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 
@@ -13,12 +12,10 @@ interface PageProps {
 export default function UniversalPredictPage({ params }: PageProps) {
   const router = useRouter();
   
-  // Next.js 15 unwrapping van de Promise params
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
 
-  // Initialiseer de Supabase client BINNEN de component
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -41,11 +38,11 @@ export default function UniversalPredictPage({ params }: PageProps) {
     race: "predictions_race"
   };
 
-  // Check login status bij het laden
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // getUser is veiliger voor een initiële check op mobiel
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         setIsLoggedIn(false);
         setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
       } else {
@@ -65,36 +62,42 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      // Haal de meest actuele sessie op
-      const { data: { session } } = await supabase.auth.getSession();
+      // CRUCIALE AANPASSING: getUser() in plaats van getSession()
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!session) {
+      if (authError || !user) {
         setIsLoggedIn(false);
-        throw new Error("Sessie niet gevonden. Log opnieuw in.");
+        throw new Error("Sessie niet herkend. Log opnieuw in.");
       }
 
       const tableName = tables[predictType] || "predictions_race";
 
-      const { error } = await supabase
+      const { error: dbError } = await supabase
         .from(tableName)
         .upsert({
-          user_id: session.user.id,
+          user_id: user.id,
           race_id: raceId,
           driver_id: selectedDriver,
           updated_at: new Date().toISOString(),
         });
 
-      if (error) throw error;
+      if (dbError) {
+        // Check op RLS (Row Level Security) fouten
+        if (dbError.code === '42501') {
+          throw new Error("Database weigert toegang (RLS). Controleer je tabelrechten.");
+        }
+        throw dbError;
+      }
 
       setMessage("✅ Voorspelling opgeslagen!");
       
       setTimeout(() => {
         router.push(`/races/${raceId}`);
-        router.refresh(); // Forceert de server om de race-detailpagina opnieuw te renderen
+        router.refresh();
       }, 1200);
       
     } catch (err: any) {
-      console.error(err);
+      console.error("Opslaan fout:", err);
       setMessage(`❌ Fout: ${err.message || "Database error"}`);
     } finally {
       setLoading(false);
