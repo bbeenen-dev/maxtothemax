@@ -89,15 +89,15 @@ export default async function CalendarPage() {
                     {/* De Streepjes (Indicators) */}
                     <div className="flex gap-1.5 mt-5">
                       {/* Qualifying streepje */}
-                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
+                      <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
                       
                       {/* Sprint streepje (indien van toepassing) */}
                       {isSprintWeekend && (
-                        <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
+                        <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
                       )}
                       
                       {/* Race streepje */}
-                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
+                      <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
                     </div>
                   </div>
                   
