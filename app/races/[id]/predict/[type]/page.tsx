@@ -29,15 +29,18 @@ export default function UniversalPredictPage({ params }: PageProps) {
     race: "Hoofdrace Top 10"
   };
 
+  // Aangepast naar officiële afkortingen voor je JSON velden
   const initialDrivers: Driver[] = [
-    { id: "1", name: "Max Verstappen" },
-    { id: "2", name: "Lando Norris" },
-    { id: "3", name: "Charles Leclerc" },
-    { id: "4", name: "Oscar Piastri" },
-    { id: "5", name: "Lewis Hamilton" },
-    { id: "6", name: "George Russell" },
-    { id: "7", name: "Carlos Sainz" },
-    { id: "8", name: "Sergio Perez" },
+    { id: "VER", name: "Max Verstappen" },
+    { id: "NOR", name: "Lando Norris" },
+    { id: "LEC", name: "Charles Leclerc" },
+    { id: "PIA", name: "Oscar Piastri" },
+    { id: "HAM", name: "Lewis Hamilton" },
+    { id: "RUS", name: "George Russell" },
+    { id: "SAI", name: "Carlos Sainz" },
+    { id: "PER", name: "Sergio Perez" },
+    { id: "ALO", name: "Fernando Alonso" },
+    { id: "HUL", name: "Nico Hulkenberg" },
   ];
 
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
@@ -103,8 +106,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
       const topDriversIds = drivers.slice(0, count).map(d => d.id);
 
-      // 3. Payload bouwen (ZONDER updated_at)
-      // Gebruik 'Record' type om TypeScript errors in VS Code te voorkomen
+      // 3. Payload bouwen (ZONDER updated_at voor JSON velden)
       const payload: Record<string, any> = {
         user_id: user.id,
         race_id: raceId,
@@ -115,7 +117,11 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .from(tableName)
         .upsert(payload, { onConflict: 'user_id, race_id' });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Uitgebreide logging voor debuggen
+        console.error("Full Supabase Error:", dbError);
+        throw dbError;
+      }
 
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
@@ -125,7 +131,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
       }, 1500);
       
     } catch (err: any) {
-      console.error(err);
+      console.error("Save Error Catch:", err);
       setSaveStatus('error');
       setMessage(`❌ Fout: ${err.message || "Database error"}`);
     } finally {
