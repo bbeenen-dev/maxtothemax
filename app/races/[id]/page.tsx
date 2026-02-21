@@ -1,131 +1,112 @@
 "use client";
 
-import { useState, use } from 'react'; // Gebruik 'use' voor params in Client Components
-import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js'; // De universele client
+import { use, useEffect, useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 
-// Initialiseer de client (gebruik je omgevingsvariabelen)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+interface RaceData {
+  id: string;
+  name: string;
+  location: string;
+  sprint_race_start: string | null;
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function QualyPredictPage({ params }: PageProps) {
-  const router = useRouter();
-  
-  // Next.js 15: unwrappen van params in Client Component
+export default function RaceCardPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
+  
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [selectedDriver, setSelectedDriver] = useState("");
+  const [race, setRace] = useState<RaceData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = async () => {
-    if (!selectedDriver) {
-      setMessage("❌ Selecteer eerst een coureur");
-      return;
-    }
+  useEffect(() => {
+    const fetchRaceData = async () => {
+      const { data, error } = await supabase
+        .from('races')
+        .select('id, name, location, sprint_race_start')
+        .eq('id', raceId)
+        .single();
 
-    setLoading(true);
-    setMessage("⏳ Bezig met opslaan...");
-
-    try {
-      // Haal de huidige sessie op
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Je moet ingelogd zijn om te kunnen voorspellen.");
+      if (!error && data) {
+        setRace(data);
       }
-
-      const { error } = await supabase
-        .from('predictions_qualifying')
-        .upsert({
-          user_id: session.user.id,
-          race_id: raceId,
-          driver_id: selectedDriver,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) throw error;
-
-      setMessage("✅ Voorspelling opgeslagen!");
-      
-      // Geef de gebruiker even tijd om het succesbericht te zien
-      setTimeout(() => {
-        router.push(`/races/${raceId}`);
-        router.refresh(); // Belangrijk om de groene balkjes te updaten!
-      }, 1200);
-      
-    } catch (err: any) {
-      console.error(err);
-      setMessage(`❌ Fout: ${err.message || "Er is iets misgegaan"}`);
-    } finally {
       setLoading(false);
-    }
-  };
+    };
+
+    fetchRaceData();
+  }, [raceId, supabase]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center">
+        <div className="text-red-600 font-black italic animate-pulse">LADEN...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-6">
       <div className="max-w-md mx-auto">
         <Link 
-          href={`/races/${raceId}`} 
-          className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-8 inline-block hover:text-white transition-colors"
+          href="/calendar" 
+          className="text-slate-500 text-[10px] font-black uppercase mb-8 inline-block tracking-widest hover:text-white transition-colors"
         >
-          &larr; Annuleren
+          &larr; Terug naar Kalender
         </Link>
 
-        <h1 className="text-3xl font-black italic uppercase text-red-600 mb-2 leading-none">
-          Pole Position
-        </h1>
-        <p className="text-slate-400 text-xs font-bold uppercase mb-8 italic">
-          Wie pakt de eerste startplek?
-        </p>
+        {/* Header met dynamische data uit de tabel */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-black italic uppercase text-white leading-none">
+            {race?.name || "Race"} <span className="text-red-600 font-light italic">Card</span>
+          </h1>
+          <p className="text-slate-400 text-[10px] font-bold uppercase italic tracking-widest mt-2">
+            {race?.location || "F1 Circuit"} • Maak je keuzes
+          </p>
+        </div>
 
-        <div className="bg-[#161a23] border border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-          {/* Accentlijn bovenin */}
-          <div className="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
-
-          <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-[0.2em]">
-            Selecteer Coureur
-          </label>
-          
-          <select 
-            value={selectedDriver}
-            onChange={(e) => setSelectedDriver(e.target.value)}
-            className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-4 text-white mb-8 focus:border-red-600 focus:ring-1 focus:ring-red-600 outline-none appearance-none cursor-pointer font-bold"
-          >
-            <option value="">-- Maak een keuze --</option>
-            <option value="1">Max Verstappen</option>
-            <option value="2">Lando Norris</option>
-            <option value="3">Charles Leclerc</option>
-            <option value="4">Lewis Hamilton</option>
-            <option value="5">Oscar Piastri</option>
-          </select>
-
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className={`w-full py-5 rounded-xl font-black italic uppercase tracking-tighter text-lg transition-all shadow-lg ${
-              loading 
-                ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
-                : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
-            }`}
-          >
-            {loading ? "Systeem laadt..." : "Bevestig Voorspelling"}
-          </button>
-
-          {message && (
-            <div className={`mt-6 p-4 rounded-lg text-center text-[10px] font-black uppercase tracking-widest italic animate-pulse ${
-              message.includes('❌') ? 'bg-red-900/20 text-red-500 border border-red-500/20' : 'bg-green-900/20 text-green-400 border border-green-500/20'
-            }`}>
-              {message}
+        <div className="space-y-4">
+          {/* 1. QUALIFYING KNOP */}
+          <Link href={`/races/${raceId}/predict/qualy`}>
+            <div className="bg-[#161a23] border border-slate-800 p-6 rounded-2xl hover:border-red-600 transition-all group relative overflow-hidden block">
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-600"></div>
+              <h2 className="text-xl font-black italic uppercase group-hover:text-red-600 transition-colors">Qualifying</h2>
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Voorspel de Top 3</p>
             </div>
+          </Link>
+
+          {/* 2. SPRINT KNOP (Alleen tonen als sprint_race_start GEEN NULL is) */}
+          {race?.sprint_race_start && (
+            <Link href={`/races/${raceId}/predict/sprint`}>
+              <div className="bg-[#161a23] border border-slate-800 p-6 rounded-2xl hover:border-orange-500 transition-all group relative overflow-hidden block">
+                <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+                <h2 className="text-xl font-black italic uppercase group-hover:text-orange-500 transition-colors">Sprint Race</h2>
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Snelheid op zaterdag</p>
+              </div>
+            </Link>
           )}
+
+          {/* 3. MAIN RACE KNOP */}
+          <Link href={`/races/${raceId}/predict/race`}>
+            <div className="bg-[#161a23] border border-slate-800 p-6 rounded-2xl hover:border-red-600 transition-all group relative overflow-hidden block">
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-600"></div>
+              <h2 className="text-xl font-black italic uppercase group-hover:text-red-600 transition-colors">Grand Prix</h2>
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">De Hoofdrace Top 3</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Status indicator onderaan */}
+        <div className="mt-12 flex items-center justify-center gap-2 border-t border-slate-900 pt-8">
+           <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+           <span className="text-slate-600 text-[8px] font-black uppercase tracking-[0.3em]">Grid Connection Active</span>
         </div>
       </div>
     </div>
