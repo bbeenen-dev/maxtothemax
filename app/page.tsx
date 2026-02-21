@@ -18,35 +18,37 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white">
       
-      {/* Hero Section met Panorama Foto */}
-      <div className="relative h-[45vh] md:h-[50vh] flex items-center justify-center overflow-hidden border-b border-red-600/30">
+      {/* Hero Section: Panorama Layout */}
+      <div className="relative w-full overflow-hidden bg-[#0b0e14]">
         
-        {/* De Afbeelding met de CORRECTE hoofdletter extensie */}
-        <Image 
-          src="/hero-2026.JPG" 
-          alt="F1 2026 Hero"
-          fill
-          priority
-          quality={100}
-          className="object-cover object-center scale-105"
-        />
+        {/* Container die de verhouding van de foto volgt (3:1 is typisch panorama) */}
+        <div className="relative w-full aspect-[3/1] md:aspect-[21/7] max-h-[40vh]">
+          <Image 
+            src="/hero-2026.JPG" 
+            alt="F1 2026 Hero"
+            fill
+            priority
+            quality={100}
+            className="object-contain object-top" // object-contain zorgt dat de hele foto zichtbaar is
+          />
+          
+          {/* Fade-out naar de rest van de pagina om zwarte balken onder de foto te voorkomen */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b0e14] via-transparent to-transparent z-10" />
+        </div>
 
-        {/* Gradients voor diepte en leesbaarheid */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/70 via-transparent to-[#0b0e14] z-10" />
-        <div className="absolute inset-0 bg-black/20 z-10" />
-
-        {/* Hero Content */}
-        <div className="z-20 text-center px-4">
+        {/* Hero Content: Iets lager geplaatst voor het panorama effect */}
+        <div className="relative z-20 text-center px-4 -mt-12 sm:-mt-20 md:-mt-28 pb-12">
           <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
             F1 <span className="text-red-600">Max2TheMax</span>
           </h1>
-          <p className="text-white font-bold uppercase tracking-[0.4em] text-xs sm:text-sm drop-shadow-lg">
+          <p className="text-white font-bold uppercase tracking-[0.4em] text-[10px] sm:text-sm drop-shadow-lg opacity-90">
             Season 2026 Edition
           </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 -mt-12 relative z-30 pb-20">
+      {/* Content sectie met kaarten */}
+      <div className="max-w-6xl mx-auto px-6 relative z-30 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* KAART 1: De Volgende Race */}
