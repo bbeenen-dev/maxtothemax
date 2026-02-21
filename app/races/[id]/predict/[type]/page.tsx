@@ -28,8 +28,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   const titles: Record<string, string> = {
     qualy: "Qualifying Top 3",
-    sprint: "Sprint Top 3",
-    race: "Hoofdrace Top 3"
+    sprint: "Sprint Top 8",
+    race: "Hoofdrace Top 10"
   };
 
   const initialDrivers: Driver[] = [
@@ -82,18 +82,36 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error("Sessie niet herkend. Log opnieuw in.");
       }
 
+      // 1. Bepaal de tabelnaam
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
+      // 2. Bepaal de kolomnaam en hoeveel drivers we moeten pakken
+      let targetColumn = "";
+      let numberOfDrivers = 0;
+
+      if (predictType === 'qualy') {
+        targetColumn = "top_3_drivers";
+        numberOfDrivers = 3;
+      } else if (predictType === 'sprint') {
+        targetColumn = "top_8_drivers";
+        numberOfDrivers = 8;
+      } else {
+        targetColumn = "top_10_drivers";
+        numberOfDrivers = 10;
+      }
+
+      // We pakken de ID's van de bovenste X drivers
+      const topDriversIds = drivers.slice(0, numberOfDrivers).map(d => d.id);
+
+      // 3. Bouw de payload op met de juiste kolomnaam
       const payload = {
         user_id: user.id,
         race_id: raceId,
-        driver_id_1: drivers[0].id,
-        driver_id_2: drivers[1].id,
-        driver_id_3: drivers[2].id,
+        [targetColumn]: topDriversIds, // Gebruik dynamische key
         updated_at: new Date().toISOString(),
       };
 
@@ -106,12 +124,10 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error(`DB [${dbError.code}]: ${dbError.message}`);
       }
 
-      // Succes acties
       setSaveStatus('success');
-      setMessage("✅ Top 3 succesvol opgeslagen!");
+      setMessage("✅ Voorspelling succesvol opgeslagen!");
       
       setTimeout(() => {
-        // Harde redirect om cache te legen
         window.location.href = `/races/${raceId}`;
       }, 1500);
       
@@ -138,44 +154,49 @@ export default function UniversalPredictPage({ params }: PageProps) {
           {titles[predictType] || "Voorspelling"}
         </h1>
         <p className="text-slate-400 text-[10px] font-bold uppercase mb-8 italic tracking-widest">
-          Zet jouw top 3 bovenaan
+          Zet jouw top {predictType === 'qualy' ? '3' : predictType === 'sprint' ? '8' : '10'} bovenaan
         </p>
 
         <div className="space-y-2 mb-8">
-          {drivers.map((driver, index) => (
-            <div 
-              key={`${predictType}-${driver.id}`}
-              className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                index < 3 
-                  ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' 
-                  : 'bg-[#161a23] border-slate-800 opacity-60'
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <span className={`font-black italic w-4 text-center ${index < 3 ? 'text-red-600' : 'text-slate-600'}`}>
-                  {index + 1}
-                </span>
-                <span className="font-bold uppercase text-xs tracking-tight">{driver.name}</span>
+          {drivers.map((driver, index) => {
+            const limit = predictType === 'qualy' ? 3 : predictType === 'sprint' ? 8 : 10;
+            const isPointZone = index < limit;
+
+            return (
+              <div 
+                key={`${predictType}-${driver.id}`}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                  isPointZone 
+                    ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' 
+                    : 'bg-[#161a23] border-slate-800 opacity-60'
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className={`font-black italic w-4 text-center ${isPointZone ? 'text-red-600' : 'text-slate-600'}`}>
+                    {index + 1}
+                  </span>
+                  <span className="font-bold uppercase text-xs tracking-tight">{driver.name}</span>
+                </div>
+                
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => move(index, 'up')} 
+                    disabled={index === 0}
+                    className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
+                  >
+                    ▲
+                  </button>
+                  <button 
+                    onClick={() => move(index, 'down')} 
+                    disabled={index === drivers.length - 1}
+                    className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
+                  >
+                    ▼
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex gap-1">
-                <button 
-                  onClick={() => move(index, 'up')} 
-                  disabled={index === 0}
-                  className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
-                >
-                  ▲
-                </button>
-                <button 
-                  onClick={() => move(index, 'down')} 
-                  disabled={index === drivers.length - 1}
-                  className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
-                >
-                  ▼
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <button
@@ -189,7 +210,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
                 : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
           }`}
         >
-          {loading ? "Verwerken..." : saveStatus === 'success' ? "Opgeslagen!" : "Bevestig Top 3"}
+          {loading ? "Verwerken..." : saveStatus === 'success' ? "Opgeslagen!" : "Bevestig Voorspelling"}
         </button>
 
         {message && (
@@ -200,7 +221,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
           }`}>
             {message}
             {saveStatus === 'success' && (
-              <p className="text-[8px] mt-2 opacity-50">Je wordt nu teruggestuurd...</p>
+              <p className="text-[8px] mt-2 opacity-50">Je wordt nu teruggestuurd naar de race...</p>
             )}
           </div>
         )}
