@@ -17,7 +17,6 @@ interface PageProps {
 export default function UniversalPredictPage({ params }: PageProps) {
   const router = useRouter();
   
-  // Next.js 15 unwrapping
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
@@ -48,10 +47,10 @@ export default function UniversalPredictPage({ params }: PageProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     const checkUser = async () => {
-      // Forceer een verse check zonder cache
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
       if (!user) {
@@ -72,6 +71,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   const handleSave = async () => {
     setLoading(true);
+    setSaveStatus('idle');
     setMessage("⏳ Bezig met opslaan...");
 
     try {
@@ -106,16 +106,18 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error(`DB [${dbError.code}]: ${dbError.message}`);
       }
 
+      // Succes acties
+      setSaveStatus('success');
       setMessage("✅ Top 3 succesvol opgeslagen!");
       
       setTimeout(() => {
-        router.push(`/races/${raceId}`);
-        // Forceer een refresh om de cache te legen
+        // Harde redirect om cache te legen
         window.location.href = `/races/${raceId}`;
-      }, 1200);
+      }, 1500);
       
     } catch (err: any) {
       console.error(err);
+      setSaveStatus('error');
       setMessage(`❌ Fout: ${err.message || "Database error"}`);
     } finally {
       setLoading(false);
@@ -178,23 +180,28 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
         <button
           onClick={handleSave}
-          disabled={loading || !isLoggedIn}
-          className={`w-full py-5 rounded-2xl font-black italic uppercase text-lg shadow-xl transition-all ${
-            loading || !isLoggedIn
-              ? "bg-slate-800 text-slate-600 cursor-not-allowed" 
-              : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
+          disabled={loading || !isLoggedIn || saveStatus === 'success'}
+          className={`w-full py-5 rounded-2xl font-black italic uppercase text-lg shadow-xl transition-all duration-300 ${
+            saveStatus === 'success'
+              ? "bg-green-600 text-white shadow-green-900/40 scale-[0.98]"
+              : loading || !isLoggedIn
+                ? "bg-slate-800 text-slate-600 cursor-not-allowed" 
+                : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
           }`}
         >
-          {loading ? "Verwerken..." : "Bevestig Top 3"}
+          {loading ? "Verwerken..." : saveStatus === 'success' ? "Opgeslagen!" : "Bevestig Top 3"}
         </button>
 
         {message && (
-          <div className={`mt-6 p-4 rounded-xl text-center text-[10px] font-black uppercase tracking-widest italic border ${
-            message.includes('❌') || message.includes('⚠️') 
-              ? 'bg-red-900/20 text-red-500 border-red-500/20' 
-              : 'bg-green-900/20 text-green-400 border-green-500/20'
+          <div className={`mt-6 p-5 rounded-2xl text-center text-[11px] font-black uppercase tracking-widest italic border-2 transition-all animate-pulse ${
+            message.includes('✅') 
+              ? 'bg-green-600/10 text-green-400 border-green-500/50' 
+              : 'bg-red-900/20 text-red-500 border-red-500/20'
           }`}>
             {message}
+            {saveStatus === 'success' && (
+              <p className="text-[8px] mt-2 opacity-50">Je wordt nu teruggestuurd...</p>
+            )}
           </div>
         )}
       </div>
