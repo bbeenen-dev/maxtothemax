@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Trophy, Timer, AlertTriangle, ChevronLeft } from 'lucide-react'; 
+//import { Trophy, Timer, AlertTriangle, ChevronLeft } from 'lucide-react'; 
 
 export default async function RaceDetailPage({ 
   params 

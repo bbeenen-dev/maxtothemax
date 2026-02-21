@@ -3,21 +3,15 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 
 export default async function CalendarPage() {
-  // Forceert dynamische rendering voor up-to-date status
   await headers(); 
-
   const supabase = await createClient();
   
-  // 1. Haal de huidige gebruiker op
   const { data: { user } } = await supabase.auth.getUser();
-
-  // 2. Haal alle races op
   const { data: races } = await supabase
     .from('races')
     .select('*')
     .order('round', { ascending: true });
 
-  // 3. Haal de voorspellingen op uit de 3 verschillende tabellen
   let allPredictions: { race_id: any; type: string }[] = [];
 
   if (user) {
@@ -32,17 +26,14 @@ export default async function CalendarPage() {
     if (sprintPreds.data) sprintPreds.data.forEach(p => allPredictions.push({ race_id: p.race_id, type: 'sprint' }));
   }
 
-  // Datum format helper
   const formatDateRange = (fp1: string, race: string) => {
     const start = new Date(fp1);
     const end = new Date(race);
     const options: Intl.DateTimeFormatOptions = { month: 'long' };
     const month = end.toLocaleDateString('nl-NL', options);
-    
     if (start.getMonth() === end.getMonth()) {
       return `${start.getDate()} - ${end.getDate()} ${month} ${end.getFullYear()}`;
     }
-    
     const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
     return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month} ${end.getFullYear()}`;
   };
@@ -54,9 +45,6 @@ export default async function CalendarPage() {
           <h1 className="text-5xl font-black italic uppercase tracking-tighter border-l-8 border-red-600 pl-6">
             F1 Kalender <span className="text-red-600">2026</span>
           </h1>
-          <p className="text-slate-400 mt-2 uppercase tracking-widest font-bold text-sm">
-            {user ? 'Check je voorspellingen per weekend' : 'Log in om te voorspellen'}
-          </p>
         </header>
 
         {!races || races.length === 0 ? (
@@ -67,13 +55,10 @@ export default async function CalendarPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {races.map((race) => {
               const preds = allPredictions.filter(p => p.race_id === race.id);
-              
               const hasQuali = preds.some(p => p.type === 'qualy');
               const hasRace = preds.some(p => p.type === 'race');
               const hasSprint = preds.some(p => p.type === 'sprint');
-              
-              const isSprintWeekend = race.sprint_race_start !== null && race.sprint_race_start !== undefined;
-              
+              const isSprintWeekend = !!race.sprint_race_start;
               const isComplete = isSprintWeekend 
                 ? (hasQuali && hasRace && hasSprint) 
                 : (hasQuali && hasRace);
@@ -83,9 +68,7 @@ export default async function CalendarPage() {
                   key={race.id} 
                   href={`/races/${race.id}`} 
                   className={`group relative bg-[#161a23] border-2 rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
-                    isComplete 
-                      ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]' 
-                      : 'border-slate-800 hover:border-red-600 shadow-xl'
+                    isComplete ? 'border-green-500' : 'border-slate-800 hover:border-red-600'
                   }`}
                 >
                   <div className="relative z-10">
@@ -94,34 +77,25 @@ export default async function CalendarPage() {
                         Round {race.round}
                       </span>
                       {isComplete && (
-                        <span className="text-[10px] bg-green-500 text-[#0b0e14] font-bold px-2 py-0.5 rounded uppercase tracking-tighter">
+                        <span className="text-[10px] bg-green-500 text-[#0b0e14] font-bold px-2 py-0.5 rounded uppercase">
                           Ready
                         </span>
                       )}
                     </div>
                     
-                    <h2 className="text-2xl font-black italic uppercase mb-1">
-                      {race.race_name}
-                    </h2>
-                    
-                    <p className="text-slate-500 text-sm font-medium">
-                      {formatDateRange(race.fp1_start, race.race_start)}
-                    </p>
+                    <h2 className="text-2xl font-black italic uppercase mb-1">{race.race_name}</h2>
+                    <p className="text-slate-500 text-sm font-medium">{formatDateRange(race.fp1_start, race.race_start)}</p>
 
-                    {/* De status balkjes onderaan */}
                     <div className="flex gap-1.5 mt-5">
-                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`} title="Qualy" />
+                      <div className={`h-1.5 w-8 rounded-full ${hasQuali ? 'bg-green-500' : 'bg-white/10'}`} />
                       {isSprintWeekend && (
-                        <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`} title="Sprint" />
+                        <div className={`h-1.5 w-8 rounded-full ${hasSprint ? 'bg-green-500' : 'bg-white/10'}`} />
                       )}
-                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`} title="Race" />
+                      <div className={`h-1.5 w-8 rounded-full ${hasRace ? 'bg-green-500' : 'bg-white/10'}`} />
                     </div>
                   </div>
                   
-                  {/* Decoratief nummer op de achtergrond */}
-                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-opacity duration-500 ${
-                    isComplete ? 'text-green-500/[0.08]' : 'text-white/[0.02]'
-                  }`}>
+                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic ${isComplete ? 'text-green-500/10' : 'text-white/5'}`}>
                     {race.round}
                   </div>
                 </Link>
