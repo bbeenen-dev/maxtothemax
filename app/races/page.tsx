@@ -68,7 +68,7 @@ export default async function CalendarPage() {
                   key={race.id} 
                   href={`/races/${race.id}`} 
                   className={`group relative bg-[#161a23] border-2 rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
-                    isComplete ? 'border-green-500' : 'border-slate-800 hover:border-red-600'
+                    isComplete ? 'border-green-500 shadow-lg shadow-green-900/10' : 'border-slate-800 hover:border-red-600'
                   }`}
                 >
                   <div className="relative z-10">
@@ -77,7 +77,7 @@ export default async function CalendarPage() {
                         Round {race.round}
                       </span>
                       {isComplete && (
-                        <span className="text-[10px] bg-green-500 text-[#0b0e14] font-bold px-2 py-0.5 rounded uppercase">
+                        <span className="text-[10px] bg-green-500 text-[#0b0e14] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
                           Ready
                         </span>
                       )}
@@ -86,16 +86,22 @@ export default async function CalendarPage() {
                     <h2 className="text-2xl font-black italic uppercase mb-1">{race.race_name}</h2>
                     <p className="text-slate-500 text-sm font-medium">{formatDateRange(race.fp1_start, race.race_start)}</p>
 
+                    {/* De Streepjes (Indicators) */}
                     <div className="flex gap-1.5 mt-5">
-                      <div className={`h-1.5 w-8 rounded-full ${hasQuali ? 'bg-green-500' : 'bg-white/10'}`} />
+                      {/* Qualifying streepje */}
+                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
+                      
+                      {/* Sprint streepje (indien van toepassing) */}
                       {isSprintWeekend && (
-                        <div className={`h-1.5 w-8 rounded-full ${hasSprint ? 'bg-green-500' : 'bg-white/10'}`} />
+                        <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
                       )}
-                      <div className={`h-1.5 w-8 rounded-full ${hasRace ? 'bg-green-500' : 'bg-white/10'}`} />
+                      
+                      {/* Race streepje */}
+                      <div className={`h-1.5 w-8 rounded-full transition-colors duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-600'}`} />
                     </div>
                   </div>
                   
-                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic ${isComplete ? 'text-green-500/10' : 'text-white/5'}`}>
+                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-colors ${isComplete ? 'text-green-500/10' : 'text-white/5'}`}>
                     {race.round}
                   </div>
                 </Link>
