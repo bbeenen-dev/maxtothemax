@@ -18,27 +18,27 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white">
       
-      {/* Hero Section: Panorama Layout */}
-      <div className="relative w-full overflow-hidden bg-[#0b0e14]">
+      {/* Hero Section: Volledige Breedte Panorama */}
+      <div className="relative w-full">
         
-        {/* Container die de verhouding van de foto volgt (3:1 is typisch panorama) */}
-        <div className="relative w-full aspect-[3/1] md:aspect-[21/7] max-h-[40vh]">
+        {/* De Container: Forceert volledige breedte en een vaste panorama hoogte */}
+        <div className="relative w-full h-[35vh] md:h-[45vh] overflow-hidden border-b border-red-600/20">
           <Image 
             src="/hero-2026.JPG" 
             alt="F1 2026 Hero"
             fill
             priority
             quality={100}
-            className="object-contain object-top" // object-contain zorgt dat de hele foto zichtbaar is
+            className="object-cover object-center" // 'cover' vult de breedte volledig zonder balken
           />
           
-          {/* Fade-out naar de rest van de pagina om zwarte balken onder de foto te voorkomen */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0b0e14] via-transparent to-transparent z-10" />
+          {/* Gradients voor diepte en naadloze overloop */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/40 via-transparent to-[#0b0e14] z-10" />
         </div>
 
-        {/* Hero Content: Iets lager geplaatst voor het panorama effect */}
-        <div className="relative z-20 text-center px-4 -mt-12 sm:-mt-20 md:-mt-28 pb-12">
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+        {/* Hero Content: Over de foto gepositioneerd */}
+        <div className="relative z-20 text-center px-4 -mt-20 md:-mt-24 pb-12">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
             F1 <span className="text-red-600">Max2TheMax</span>
           </h1>
           <p className="text-white font-bold uppercase tracking-[0.4em] text-[10px] sm:text-sm drop-shadow-lg opacity-90">
