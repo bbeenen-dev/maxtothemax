@@ -16,6 +16,8 @@ interface PageProps {
 
 export default function UniversalPredictPage({ params }: PageProps) {
   const router = useRouter();
+  
+  // Next.js 15 unwrapping van de Promise params
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
@@ -25,7 +27,13 @@ export default function UniversalPredictPage({ params }: PageProps) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // De volledige lijst met coureurs
+  // Titels mappen op basis van het type in de URL
+  const titles: Record<string, string> = {
+    qualy: "Qualifying Top 3",
+    sprint: "Sprint Top 3",
+    race: "Hoofdrace Top 3"
+  };
+
   const initialDrivers: Driver[] = [
     { id: "1", name: "Max Verstappen" },
     { id: "2", name: "Lando Norris" },
@@ -42,15 +50,18 @@ export default function UniversalPredictPage({ params }: PageProps) {
   const [message, setMessage] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
 
+  // Check login status bij het laden (gebruik getUser voor server-side validatie op mobiel)
   useEffect(() => {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
+      if (!user) {
+        setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
+      }
     };
     checkUser();
   }, [supabase]);
 
-  // Eenvoudige omhoog/omlaag logica voor mobiel (werkt beter dan drag-n-drop op sommige telefoons)
   const move = (index: number, direction: 'up' | 'down') => {
     const newDrivers = [...drivers];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -65,8 +76,13 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Log eerst even in.");
+      // Forceer een check op de actuele gebruiker
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        setIsLoggedIn(false);
+        throw new Error("Sessie niet herkend. Log opnieuw in.");
+      }
 
       const tableName = {
         qualy: "predictions_qualifying",
@@ -74,7 +90,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
-      // We pakken de bovenste 3 uit de lijst
+      // Payload voor de Top 3
       const payload = {
         user_id: user.id,
         race_id: raceId,
@@ -88,9 +104,14 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .from(tableName)
         .upsert(payload, { onConflict: 'user_id, race_id' });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Specifieke debug informatie tonen
+        console.error("Supabase Error:", dbError);
+        throw new Error(`DB [${dbError.code}]: ${dbError.message}`);
+      }
 
-      setMessage("✅ Top 3 opgeslagen!");
+      setMessage("✅ Top 3 succesvol opgeslagen!");
+      
       setTimeout(() => {
         router.push(`/races/${raceId}`);
         router.refresh();
@@ -98,7 +119,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
       
     } catch (err: any) {
       console.error(err);
-      setMessage(`❌ Fout: ${err.message || "Controleer of je database kolommen driver_id_1, _2 en _3 heeft."}`);
+      setMessage(`❌ Fout: ${err.message || "Database error"}`);
     } finally {
       setLoading(false);
     }
@@ -107,14 +128,17 @@ export default function UniversalPredictPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-6">
       <div className="max-w-md mx-auto">
-        <Link href={`/races/${raceId}`} className="text-slate-500 text-[10px] font-black uppercase mb-8 inline-block">
-          &larr; Terug
+        <Link 
+          href={`/races/${raceId}`} 
+          className="text-slate-500 text-[10px] font-black uppercase mb-8 inline-block hover:text-white transition-colors tracking-widest"
+        >
+          &larr; Annuleren
         </Link>
 
         <h1 className="text-3xl font-black italic uppercase text-red-600 leading-none mb-1">
-          {predictType === 'qualy' ? 'Qualy Top 3' : 'Race Top 3'}
+          {titles[predictType] || "Voorspelling"}
         </h1>
-        <p className="text-slate-400 text-[10px] font-bold uppercase mb-8 italic">
+        <p className="text-slate-400 text-[10px] font-bold uppercase mb-8 italic tracking-widest">
           Zet jouw top 3 bovenaan
         </p>
 
@@ -123,19 +147,33 @@ export default function UniversalPredictPage({ params }: PageProps) {
             <div 
               key={driver.id}
               className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                index < 3 ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' : 'bg-[#161a23] border-slate-800'
+                index < 3 
+                  ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' 
+                  : 'bg-[#161a23] border-slate-800 opacity-60'
               }`}
             >
               <div className="flex items-center gap-4">
-                <span className={`font-black italic ${index < 3 ? 'text-red-600' : 'text-slate-600'}`}>
+                <span className={`font-black italic w-4 text-center ${index < 3 ? 'text-red-600' : 'text-slate-600'}`}>
                   {index + 1}
                 </span>
-                <span className="font-bold uppercase text-sm tracking-tight">{driver.name}</span>
+                <span className="font-bold uppercase text-xs tracking-tight">{driver.name}</span>
               </div>
               
               <div className="flex gap-1">
-                <button onClick={() => move(index, 'up')} className="p-2 bg-slate-800 rounded-lg text-xs">▲</button>
-                <button onClick={() => move(index, 'down')} className="p-2 bg-slate-800 rounded-lg text-xs">▼</button>
+                <button 
+                  onClick={() => move(index, 'up')} 
+                  disabled={index === 0}
+                  className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
+                >
+                  ▲
+                </button>
+                <button 
+                  onClick={() => move(index, 'down')} 
+                  disabled={index === drivers.length - 1}
+                  className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
+                >
+                  ▼
+                </button>
               </div>
             </div>
           ))}
@@ -144,13 +182,21 @@ export default function UniversalPredictPage({ params }: PageProps) {
         <button
           onClick={handleSave}
           disabled={loading || !isLoggedIn}
-          className="w-full py-5 bg-red-600 rounded-xl font-black italic uppercase text-lg shadow-xl shadow-red-900/20 disabled:opacity-50"
+          className={`w-full py-5 rounded-2xl font-black italic uppercase text-lg shadow-xl transition-all ${
+            loading || !isLoggedIn
+              ? "bg-slate-800 text-slate-600 cursor-not-allowed" 
+              : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
+          }`}
         >
-          {loading ? "Opslaan..." : "Bevestig Top 3"}
+          {loading ? "Verwerken..." : "Bevestig Top 3"}
         </button>
 
         {message && (
-          <div className="mt-6 p-4 rounded-lg text-center text-[10px] font-black uppercase border border-white/10">
+          <div className={`mt-6 p-4 rounded-xl text-center text-[10px] font-black uppercase tracking-widest italic border ${
+            message.includes('❌') || message.includes('⚠️') 
+              ? 'bg-red-900/20 text-red-500 border-red-500/20' 
+              : 'bg-green-900/20 text-green-400 border-green-500/20'
+          }`}>
             {message}
           </div>
         )}
