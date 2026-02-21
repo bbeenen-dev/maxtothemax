@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image'; // Importeer Image component
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
@@ -21,23 +21,23 @@ export default async function HomePage() {
       {/* Hero Section met Panorama Foto */}
       <div className="relative h-[45vh] md:h-[50vh] flex items-center justify-center overflow-hidden border-b border-red-600/30">
         
-        {/* De Afbeelding */}
+        {/* De Afbeelding met de CORRECTE hoofdletter extensie */}
         <Image 
-          src="/hero-2026.jpg" 
+          src="/hero-2026.JPG" 
           alt="F1 2026 Hero"
           fill
           priority
           quality={100}
-          className="object-cover object-center scale-105" // scale-105 geeft een lichte 'zoom' voor een panoramisch effect
+          className="object-cover object-center scale-105"
         />
 
-        {/* Gradient Overlays voor diepte en leesbaarheid */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/60 via-transparent to-[#0b0e14] z-10" />
-        <div className="absolute inset-0 bg-black/20 z-10" /> {/* Extra darkening laag */}
+        {/* Gradients voor diepte en leesbaarheid */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/70 via-transparent to-[#0b0e14] z-10" />
+        <div className="absolute inset-0 bg-black/20 z-10" />
 
         {/* Hero Content */}
         <div className="z-20 text-center px-4">
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 break-words drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
             F1 <span className="text-red-600">Max2TheMax</span>
           </h1>
           <p className="text-white font-bold uppercase tracking-[0.4em] text-xs sm:text-sm drop-shadow-lg">
@@ -74,7 +74,6 @@ export default async function HomePage() {
               )}
             </div>
 
-            {/* Decoratieve achtergrond tekst */}
             {nextRace?.location_code && (
               <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.03] select-none pointer-events-none">
                 {nextRace.location_code}
@@ -105,7 +104,6 @@ export default async function HomePage() {
               <p className="text-slate-600 text-sm mt-1">Binnenkort beschikbaar...</p>
             </div>
           </div>
-
         </div>
       </div>
     </div>
