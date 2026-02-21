@@ -6,9 +6,10 @@ export default async function HomePage() {
   const supabase = await createClient();
 
   // Haal de eerstvolgende race op voor de "Next Race" kaart
+  // We voegen city_name expliciet toe aan de select
   const { data: nextRaces } = await supabase
     .from('races')
-    .select('*')
+    .select('*, city_name')
     .gt('race_start', new Date().toISOString())
     .order('race_start', { ascending: true })
     .limit(1);
@@ -29,7 +30,7 @@ export default async function HomePage() {
             fill
             priority
             quality={100}
-            className="object-cover object-center" // 'cover' vult de breedte volledig zonder balken
+            className="object-cover object-center" 
           />
           
           {/* Gradients voor diepte en naadloze overloop */}
@@ -63,7 +64,8 @@ export default async function HomePage() {
               </h2>
               
               <p className="text-slate-400 mb-8 uppercase tracking-widest text-sm font-bold">
-                {nextRace ? `Round ${nextRace.round} • ${nextRace.location_code}` : ""}
+                {/* Aangepast naar city_name in plaats van location_code */}
+                {nextRace ? `Round ${nextRace.round} • ${nextRace.city_name || "Locatie onbekend"}` : ""}
               </p>
 
               {nextRace && (
@@ -76,9 +78,10 @@ export default async function HomePage() {
               )}
             </div>
 
-            {nextRace?.location_code && (
-              <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.03] select-none pointer-events-none">
-                {nextRace.location_code}
+            {/* Decoratieve achtergrond tekst (gebruikt city_name fallback) */}
+            {nextRace && (
+              <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.03] select-none pointer-events-none uppercase">
+                {nextRace.city_name?.substring(0, 3) || nextRace.location_code}
               </div>
             )}
           </div>
