@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image'; // Importeer Image component
 import { createClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
@@ -16,14 +17,30 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white">
-      {/* Hero Section */}
-      <div className="relative h-[40vh] flex items-center justify-center overflow-hidden border-b border-red-600/30">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0b0e14] z-10" />
+      
+      {/* Hero Section met Panorama Foto */}
+      <div className="relative h-[45vh] md:h-[50vh] flex items-center justify-center overflow-hidden border-b border-red-600/30">
+        
+        {/* De Afbeelding */}
+        <Image 
+          src="/hero-2026.jpg" 
+          alt="F1 2026 Hero"
+          fill
+          priority
+          quality={100}
+          className="object-cover object-center scale-105" // scale-105 geeft een lichte 'zoom' voor een panoramisch effect
+        />
+
+        {/* Gradient Overlays voor diepte en leesbaarheid */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/60 via-transparent to-[#0b0e14] z-10" />
+        <div className="absolute inset-0 bg-black/20 z-10" /> {/* Extra darkening laag */}
+
+        {/* Hero Content */}
         <div className="z-20 text-center px-4">
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 break-words">
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 break-words drop-shadow-2xl">
             F1 <span className="text-red-600">Max2TheMax</span>
           </h1>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-sm">
+          <p className="text-white font-bold uppercase tracking-[0.4em] text-xs sm:text-sm drop-shadow-lg">
             Season 2026 Edition
           </p>
         </div>
