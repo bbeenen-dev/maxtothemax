@@ -40,7 +40,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const checkUser = async () => {
-      // getUser is veiliger voor een initiële check op mobiel
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setIsLoggedIn(false);
@@ -62,7 +61,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      // CRUCIALE AANPASSING: getUser() in plaats van getSession()
+      // Harde check op de gebruiker bij de server
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
@@ -70,23 +69,28 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error("Sessie niet herkend. Log opnieuw in.");
       }
 
-      const tableName = tables[predictType] || "predictions_race";
+      const tableName = tables[predictType];
+      if (!tableName) throw new Error("Ongeldig type voorspelling geselecteerd.");
+
+      // Voorbereiden van de data
+      const payload = {
+        user_id: user.id,
+        race_id: raceId,
+        driver_id: selectedDriver,
+        updated_at: new Date().toISOString(),
+      };
 
       const { error: dbError } = await supabase
         .from(tableName)
-        .upsert({
-          user_id: user.id,
-          race_id: raceId,
-          driver_id: selectedDriver,
-          updated_at: new Date().toISOString(),
-        });
+        .upsert(payload);
 
       if (dbError) {
-        // Check op RLS (Row Level Security) fouten
-        if (dbError.code === '42501') {
-          throw new Error("Database weigert toegang (RLS). Controleer je tabelrechten.");
-        }
-        throw dbError;
+        // Uitgebreide foutmelding genereren voor debugging
+        console.error("Supabase Database Error:", dbError);
+        const errorDetail = dbError.details ? ` - Detail: ${dbError.details}` : "";
+        const hint = dbError.hint ? ` (Tip: ${dbError.hint})` : "";
+        
+        throw new Error(`DB Fout [${dbError.code}]: ${dbError.message}${errorDetail}${hint}`);
       }
 
       setMessage("✅ Voorspelling opgeslagen!");
@@ -98,7 +102,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
       
     } catch (err: any) {
       console.error("Opslaan fout:", err);
-      setMessage(`❌ Fout: ${err.message || "Database error"}`);
+      // We tonen de volledige fout string zodat we precies kunnen zien wat er mis is
+      setMessage(`❌ ${err.message || "Onbekende fout bij opslaan"}`);
     } finally {
       setLoading(false);
     }
@@ -157,11 +162,11 @@ export default function UniversalPredictPage({ params }: PageProps) {
                 : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-lg shadow-red-900/20"
             }`}
           >
-            {loading ? "Opslaan..." : "Bevestig Keuze"}
+            {loading ? "Verwerken..." : "Bevestig Keuze"}
           </button>
 
           {message && (
-            <div className={`mt-6 p-4 rounded-lg text-center text-[10px] font-black uppercase tracking-widest italic border ${
+            <div className={`mt-6 p-4 rounded-lg text-center text-xs font-bold border break-words ${
               message.includes('❌') || message.includes('⚠️') 
                 ? 'bg-red-900/20 text-red-500 border-red-500/20' 
                 : 'bg-green-900/20 text-green-400 border-green-500/20'
