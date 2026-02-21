@@ -6,8 +6,7 @@ import Link from 'next/link';
 
 interface RaceData {
   id: string;
-  race_name: string;      // Aangepast naar jouw veldnaam
-  location: string;
+  race_name: string;
   sprint_race_start: string | null;
 }
 
@@ -31,10 +30,10 @@ export default function RaceCardPage({ params }: PageProps) {
   useEffect(() => {
     async function getRace() {
       try {
-        // We halen nu de juiste kolomnaam 'race_name' op
+        // Alleen de velden ophalen waarvan we zeker weten dat ze bestaan
         const { data, error } = await supabase
           .from('races')
-          .select('id, race_name, location, sprint_race_start')
+          .select('id, race_name, sprint_race_start')
           .eq('id', raceId)
           .single();
 
@@ -59,22 +58,22 @@ export default function RaceCardPage({ params }: PageProps) {
   );
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-white p-6">
+    <div className="min-h-screen bg-[#0b0e14] text-white p-6 font-sans">
       <div className="max-w-md mx-auto">
         <Link 
           href="/calendar" 
           className="text-slate-500 text-[10px] font-black uppercase mb-8 inline-block tracking-[0.2em] hover:text-white transition-colors"
         >
-          &larr; Kalender
+          &larr; Terug naar Kalender
         </Link>
 
-        {/* Header met de juiste kolom: race_name */}
+        {/* Header met alleen de Racenaam */}
         <div className="mb-10">
           <h1 className="text-4xl font-black italic uppercase text-white leading-tight">
             {race?.race_name || "Race"} <span className="text-red-600">Card</span>
           </h1>
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-2 italic">
-            {race?.location || "Grand Prix"} • Voorspellingen
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-3 italic">
+             Maak je voorspellingen
           </p>
         </div>
 
@@ -88,13 +87,13 @@ export default function RaceCardPage({ params }: PageProps) {
             </div>
           </Link>
 
-          {/* SPRINT RACE - Wordt getoond als sprint_race_start een waarde heeft */}
+          {/* SPRINT RACE - Wordt alleen getoond als sprint_race_start gevuld is */}
           {race?.sprint_race_start && (
             <Link href={`/races/${raceId}/predict/sprint`}>
               <div className="bg-[#161a23] border border-slate-800 p-6 rounded-2xl hover:border-orange-500 transition-all group relative overflow-hidden block">
                 <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
                 <h2 className="text-xl font-black italic uppercase group-hover:text-orange-500 transition-colors">Sprint Race</h2>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Snelheid op zaterdag</p>
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">Zaterdag-race</p>
               </div>
             </Link>
           )}
@@ -109,17 +108,19 @@ export default function RaceCardPage({ params }: PageProps) {
           </Link>
         </div>
 
-        {/* Debug/Error sectie */}
+        {/* Foutmelding / Status */}
         {dbError && (
-          <div className="mt-10 p-4 bg-red-900/20 border border-red-900/40 rounded-xl text-red-500 text-[10px] uppercase font-black tracking-widest leading-relaxed">
-            Database Error: {dbError}
+          <div className="mt-10 p-4 bg-red-900/20 border border-red-900/40 rounded-xl text-red-500 text-[10px] uppercase font-black tracking-widest">
+            Fout bij laden: {dbError}
           </div>
         )}
 
         {!race?.sprint_race_start && !loading && !dbError && (
-          <p className="mt-8 text-[8px] text-slate-800 uppercase text-center font-bold tracking-widest opacity-40 italic">
-            Geen sprintrace gepland voor dit weekend
-          </p>
+          <div className="mt-12 pt-8 border-t border-slate-900 text-center">
+             <p className="text-[8px] text-slate-700 uppercase font-black tracking-[0.2em]">
+                Geen Sprintrace beschikbaar voor dit weekend
+             </p>
+          </div>
         )}
       </div>
     </div>
