@@ -2,13 +2,9 @@
 
 import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+// We gebruiken de SSR browser client voor betere cookie-handling
+import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
-
-// Gebruik de omgevingsvariabelen voor de client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface PageProps {
   params: Promise<{ id: string; type: string }>;
@@ -17,40 +13,47 @@ interface PageProps {
 export default function UniversalPredictPage({ params }: PageProps) {
   const router = useRouter();
   
-  // Next.js 15 unwrapping
+  // Next.js 15 unwrapping van de Promise params
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
-  const predictType = resolvedParams.type; // 'qualy', 'sprint' of 'race'
+  const predictType = resolvedParams.type;
+
+  // Initialiseer de Supabase client BINNEN de component
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedDriver, setSelectedDriver] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
 
-  // Titels mappen op basis van het type in de URL
   const titles: Record<string, string> = {
     qualy: "Pole Position",
     sprint: "Sprint Winnaar",
     race: "Hoofdrace Winnaar"
   };
 
-  // Tabelnamen mappen op basis van het type
   const tables: Record<string, string> = {
     qualy: "predictions_qualifying",
     sprint: "predictions_sprint",
     race: "predictions_race"
   };
 
+  // Check login status bij het laden
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setIsLoggedIn(false);
         setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
+      } else {
+        setIsLoggedIn(true);
       }
     };
     checkUser();
-  }, []);
+  }, [supabase]);
 
   const handleSave = async () => {
     if (!selectedDriver) {
@@ -62,9 +65,13 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
+      // Haal de meest actuele sessie op
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) throw new Error("Sessie verlopen, log opnieuw in.");
+      if (!session) {
+        setIsLoggedIn(false);
+        throw new Error("Sessie niet gevonden. Log opnieuw in.");
+      }
 
       const tableName = tables[predictType] || "predictions_race";
 
@@ -83,7 +90,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
       
       setTimeout(() => {
         router.push(`/races/${raceId}`);
-        router.refresh();
+        router.refresh(); // Forceert de server om de race-detailpagina opnieuw te renderen
       }, 1200);
       
     } catch (err: any) {
@@ -99,7 +106,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
       <div className="max-w-md mx-auto">
         <Link 
           href={`/races/${raceId}`} 
-          className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-8 inline-block"
+          className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-8 inline-block hover:text-white transition-colors"
         >
           &larr; Terug naar race
         </Link>
@@ -115,22 +122,22 @@ export default function UniversalPredictPage({ params }: PageProps) {
           <div className="absolute top-0 left-0 w-full h-1 bg-red-600"></div>
 
           {!isLoggedIn && (
-             <Link href="/login" className="block mb-4 p-3 bg-red-900/20 border border-red-500/20 rounded-lg text-center text-red-500 text-xs font-bold uppercase">
-               Tik hier om in te loggen
+             <Link href="/login" className="block mb-6 p-4 bg-red-600/10 border border-red-600/20 rounded-xl text-center text-red-500 text-[10px] font-black uppercase tracking-widest animate-pulse">
+               Je moet inloggen om te voorspellen &rarr;
              </Link>
           )}
 
           <label className="block text-[10px] font-black uppercase text-slate-500 mb-3 tracking-widest">
-            Kies Coureur
+            Selecteer Coureur
           </label>
           
           <select 
             value={selectedDriver}
             onChange={(e) => setSelectedDriver(e.target.value)}
-            className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-4 text-white mb-8 outline-none font-bold"
+            disabled={!isLoggedIn}
+            className="w-full bg-[#0b0e14] border border-slate-700 rounded-xl p-4 text-white mb-8 outline-none font-bold focus:border-red-600 disabled:opacity-30 transition-all"
           >
             <option value="">-- Maak een keuze --</option>
-            {/* Hier kun je later je lijst met coureurs inladen */}
             <option value="1">Max Verstappen</option>
             <option value="2">Lando Norris</option>
             <option value="3">Charles Leclerc</option>
@@ -143,8 +150,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
             disabled={loading || !isLoggedIn}
             className={`w-full py-5 rounded-xl font-black italic uppercase tracking-tighter text-lg transition-all ${
               loading || !isLoggedIn
-                ? "bg-slate-800 text-slate-600 cursor-not-allowed" 
-                : "bg-red-600 text-white hover:bg-red-700 active:scale-95"
+                ? "bg-slate-800 text-slate-600 cursor-not-allowed opacity-50" 
+                : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-lg shadow-red-900/20"
             }`}
           >
             {loading ? "Opslaan..." : "Bevestig Keuze"}
