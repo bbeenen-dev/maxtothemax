@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Dit ververst de sessie-cookie zodat de database je herkent op mobiel
+  // Dit is de cruciale stap: het ververst de sessie voor je mobiele browser
   await supabase.auth.getUser()
 
   return response
