@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 
 export default async function RaceDetailPage({ 
@@ -5,35 +6,44 @@ export default async function RaceDetailPage({
 }: { 
   params: Promise<{ id: string }> 
 }) {
-  // We wachten alleen op de ID, we raken Supabase nog even niet aan
   const { id } = await params;
+  
+  try {
+    const supabase = await createClient();
+    
+    const { data: race, error } = await supabase
+      .from('races')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-  return (
-    <div className="min-h-screen bg-blue-900 text-white flex flex-col items-center justify-center p-6 text-center">
-      <div className="max-w-md bg-black/20 p-10 rounded-3xl border-4 border-white/20 backdrop-blur-md">
-        <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-4">
-          Diagnose Modus
-        </h1>
-        <p className="text-blue-100 mb-8">
-          Als je dit blauwe scherm ziet, werkt de routing van je app goed! 
-          Het probleem zit dan waarschijnlijk in de database-verbinding.
-        </p>
-        
-        <div className="bg-white/10 p-4 rounded-xl font-mono text-sm mb-8">
-          Geladen ID: <span className="text-yellow-400 font-bold">{id}</span>
-        </div>
+    if (error) throw new Error(error.message);
+    if (!race) throw new Error("Race niet gevonden in database");
 
-        <Link 
-          href="/races" 
-          className="inline-block bg-white text-blue-900 px-6 py-3 rounded-xl font-black uppercase italic text-sm hover:bg-blue-100 transition-colors"
-        >
+    // Als alles goed gaat, tonen we de data (zonder iconen voor de veiligheid)
+    return (
+      <div className="min-h-screen bg-[#0b0e14] text-white p-8">
+        <h1 className="text-4xl font-black uppercase italic text-red-600">{race.race_name}</h1>
+        <p className="text-slate-400 mt-2">ID bevesitgd: {race.id}</p>
+        <Link href="/races" className="inline-block mt-8 bg-white/10 p-3 rounded-lg text-xs font-bold uppercase">
           ← Terug naar kalender
         </Link>
       </div>
-      
-      <p className="mt-8 text-blue-300 text-[10px] uppercase tracking-[0.3em] font-bold">
-        Next.js 15 Runtime Check
-      </p>
-    </div>
-  );
+    );
+
+  } catch (err: any) {
+    // DIT GAAT ONS VERTELLEN WAT ER MIS IS
+    return (
+      <div className="min-h-screen bg-orange-700 text-white p-10">
+        <h1 className="text-2xl font-bold">Database Fout!</h1>
+        <p className="mt-4 p-4 bg-black/20 rounded font-mono text-sm">
+          {err.message || "Onbekende fout bij verbinden met Supabase"}
+        </p>
+        <p className="mt-6 text-sm opacity-80">
+          Check of je SUPABASE_URL en SERVICE_ROLE_KEY in Vercel staan.
+        </p>
+        <Link href="/races" className="underline mt-4 block">Terug</Link>
+      </div>
+    );
+  }
 }
