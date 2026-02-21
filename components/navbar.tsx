@@ -19,7 +19,6 @@ export function Navbar() {
 
   useEffect(() => {
     const getUser = async () => {
-      // Gebruik getUser voor de meest betrouwbare check op mobiel
       const { data: { user } } = await supabase.auth.getUser();
       setUserEmail(user?.email ?? null);
       setLoading(false);
@@ -27,7 +26,6 @@ export function Navbar() {
 
     getUser();
 
-    // Luister naar auth veranderingen
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserEmail(session?.user?.email ?? null);
     });
@@ -42,14 +40,14 @@ export function Navbar() {
       <div className="max-w-5xl mx-auto flex items-center gap-2 md:gap-4">
         
         {/* 1. Terug-navigatie */}
-        <div className="w-10">
+        <div className="flex items-center">
           {!isHome && (
             <button 
               onClick={() => router.back()}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white font-bold"
+              className="p-2 px-3 hover:bg-white/10 rounded-xl transition-all text-slate-400 hover:text-white text-xs font-bold"
               aria-label="Ga terug"
             >
-              &larr;
+              &lt;
             </button>
           )}
         </div>

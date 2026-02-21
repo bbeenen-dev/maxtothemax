@@ -5,8 +5,8 @@ import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 
 interface Driver {
-  id: string;
-  name: string;
+  driver_id: string;
+  driver_name: string;
 }
 
 interface PageProps {
@@ -29,36 +29,61 @@ export default function UniversalPredictPage({ params }: PageProps) {
     race: "Hoofdrace Top 10"
   };
 
-  // Aangepast naar officiële afkortingen voor je JSON velden
+  // Bijgewerkt naar de actuele 2026 Grid en jouw database veldnamen
   const initialDrivers: Driver[] = [
-    { id: "VER", name: "Max Verstappen" },
-    { id: "NOR", name: "Lando Norris" },
-    { id: "LEC", name: "Charles Leclerc" },
-    { id: "PIA", name: "Oscar Piastri" },
-    { id: "HAM", name: "Lewis Hamilton" },
-    { id: "RUS", name: "George Russell" },
-    { id: "SAI", name: "Carlos Sainz" },
-    { id: "PER", name: "Sergio Perez" },
-    { id: "ALO", name: "Fernando Alonso" },
-    { id: "HUL", name: "Nico Hulkenberg" },
+    { driver_id: "VER", driver_name: "Max Verstappen" },
+    { driver_id: "LAW", driver_name: "Liam Lawson" },
+    { driver_id: "NOR", driver_name: "Lando Norris" },
+    { driver_id: "PIA", driver_name: "Oscar Piastri" },
+    { driver_id: "LEC", driver_name: "Charles Leclerc" },
+    { driver_id: "HAM", driver_name: "Lewis Hamilton" },
+    { driver_id: "RUS", driver_name: "George Russell" },
+    { driver_id: "ANT", driver_name: "Kimi Antonelli" },
+    { driver_id: "ALO", driver_name: "Fernando Alonso" },
+    { driver_id: "STR", driver_name: "Lance Stroll" },
+    { driver_id: "HUL", driver_name: "Nico Hülkenberg" },
+    { driver_id: "BOR", driver_name: "Gabriel Bortoleto" },
+    { driver_id: "SAI", driver_name: "Carlos Sainz" },
+    { driver_id: "ALB", driver_name: "Alex Albon" },
+    { driver_id: "GAS", driver_name: "Pierre Gasly" },
+    { driver_id: "COL", driver_name: "Franco Colapinto" },
+    { driver_id: "OCO", driver_name: "Esteban Ocon" },
+    { driver_id: "BEA", driver_name: "Oliver Bearman" },
+    { driver_id: "TSU", driver_name: "Yuki Tsunoda" },
+    { driver_id: "LIN", driver_name: "Arvid Lindblad" },
+    { driver_id: "PER", driver_name: "Sergio Perez" },
+    { driver_id: "BOT", driver_name: "Valtteri Bottas" },
   ];
 
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+  const [raceName, setRaceName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    const checkUser = async () => {
+    const fetchData = async () => {
+      // 1. Check user
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
       if (!user) {
         setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
       }
+
+      // 2. Haal racenaam op
+      const { data: raceData } = await supabase
+        .from('races')
+        .select('race_name')
+        .eq('id', raceId)
+        .single();
+      
+      if (raceData) {
+        setRaceName(raceData.race_name);
+      }
     };
-    checkUser();
-  }, [supabase]);
+    fetchData();
+  }, [supabase, raceId]);
 
   const move = (index: number, direction: 'up' | 'down') => {
     const newDrivers = [...drivers];
@@ -82,14 +107,12 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error("Sessie niet herkend. Log opnieuw in.");
       }
 
-      // 1. Tabelnaam bepalen
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
-      // 2. Kolomnaam en aantal drivers bepalen
       let targetColumn = "";
       let count = 0;
 
@@ -104,9 +127,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
         count = 10;
       }
 
-      const topDriversIds = drivers.slice(0, count).map(d => d.id);
+      const topDriversIds = drivers.slice(0, count).map(d => d.driver_id);
 
-      // 3. Payload bouwen (ZONDER updated_at voor JSON velden)
       const payload: Record<string, any> = {
         user_id: user.id,
         race_id: raceId,
@@ -117,11 +139,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .from(tableName)
         .upsert(payload, { onConflict: 'user_id, race_id' });
 
-      if (dbError) {
-        // Uitgebreide logging voor debuggen
-        console.error("Full Supabase Error:", dbError);
-        throw dbError;
-      }
+      if (dbError) throw dbError;
 
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
@@ -131,7 +149,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
       }, 1500);
       
     } catch (err: any) {
-      console.error("Save Error Catch:", err);
       setSaveStatus('error');
       setMessage(`❌ Fout: ${err.message || "Database error"}`);
     } finally {
@@ -146,8 +163,13 @@ export default function UniversalPredictPage({ params }: PageProps) {
           href={`/races/${raceId}`} 
           className="text-slate-500 text-[10px] font-black uppercase mb-8 inline-block hover:text-white transition-colors tracking-widest"
         >
-          &larr; Annuleren
+          &lt; Annuleren
         </Link>
+
+        {/* Racenaam boven de titel */}
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 italic">
+          {raceName || "Laden..."}
+        </p>
 
         <h1 className="text-3xl font-black italic uppercase text-red-600 leading-none mb-1">
           {titles[predictType] || "Voorspelling"}
@@ -163,7 +185,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
             return (
               <div 
-                key={`${predictType}-${driver.id}`}
+                key={`${predictType}-${driver.driver_id}`}
                 className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                   isPointZone 
                     ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' 
@@ -174,7 +196,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
                   <span className={`font-black italic w-4 text-center ${isPointZone ? 'text-red-600' : 'text-slate-600'}`}>
                     {index + 1}
                   </span>
-                  <span className="font-bold uppercase text-xs tracking-tight">{driver.name}</span>
+                  <span className="font-bold uppercase text-xs tracking-tight">{driver.driver_name}</span>
                 </div>
                 
                 <div className="flex gap-1">
@@ -219,11 +241,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
               : 'bg-red-900/20 text-red-500 border-red-500/20'
           }`}>
             {message}
-            {saveStatus === 'success' && (
-              <p className="text-[8px] mt-2 opacity-50 font-bold uppercase tracking-tight">
-                Je wordt nu teruggestuurd naar de race...
-              </p>
-            )}
           </div>
         )}
       </div>
