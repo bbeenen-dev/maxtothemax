@@ -1,14 +1,19 @@
-export const dynamic = 'force-dynamic';
-
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 
-export default async function RaceDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+// We definiëren het type expliciet zodat VS Code niet klaagt
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function RaceDetailPage({ params }: PageProps) {
+  // 1. Dwing dynamische rendering af (lost de Turbopack/CacheComponents build error op)
+  await headers();
+
+  // 2. Wacht op de params (Next.js 15 standaard)
   const { id } = await params;
+  
   const supabase = await createClient();
   
   const { data: race } = await supabase
@@ -62,6 +67,7 @@ export default async function RaceDetailPage({
           </div>
         </div>
 
+        {/* Winnaars Sectie 2025 */}
         <div className="grid grid-cols-2 gap-3 mb-8">
           <div className="bg-[#161a23] border border-slate-800 rounded-xl p-4">
             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest">Winner 2025</p>
