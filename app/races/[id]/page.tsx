@@ -28,22 +28,27 @@ export default async function RaceDetailPage({
     );
   }
 
-  const nu = new Date();
-  const isQualyLocked = race.qualifying_start ? nu > new Date(race.qualifying_start) : true;
-  const isSprintLocked = race.sprint_race_start ? nu > new Date(race.sprint_race_start) : true;
-  const isRaceLocked = race.race_start ? nu > new Date(race.race_start) : true;
+  // VEILIGE DATUM BEREKENING (voorkomt crashes op mobiele Safari)
+  const nu = new Date().getTime();
+  const qualyTijd = race.qualifying_start ? new Date(race.qualifying_start).getTime() : 0;
+  const sprintTijd = race.sprint_race_start ? new Date(race.sprint_race_start).getTime() : 0;
+  const raceTijd = race.race_start ? new Date(race.race_start).getTime() : 0;
+
+  const isQualyLocked = qualyTijd === 0 || nu > qualyTijd;
+  const isSprintLocked = sprintTijd === 0 || nu > sprintTijd;
+  const isRaceLocked = raceTijd === 0 || nu > raceTijd;
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         
         {/* Navigatie */}
-        <Link href="/races" className="inline-block text-slate-500 mb-6 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">
+        <Link href="/races" className="inline-block text-slate-500 mb-6 text-[10px] font-black uppercase tracking-widest hover:text-white">
            &larr; Terug naar kalender
         </Link>
                 
-        {/* Race Header */}
-        <div className="bg-red-700 p-8 rounded-2xl shadow-xl mb-6">
+        {/* Race Header - Shadow verwijderd voor stabiliteit */}
+        <div className="bg-red-700 p-8 rounded-2xl mb-6 border border-red-500/20">
           <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-none">
             {race.race_name}
           </h1>
@@ -61,11 +66,11 @@ export default async function RaceDetailPage({
         <div className="grid grid-cols-2 gap-3 mb-8">
           <div className="bg-[#161a23] border border-slate-800 rounded-xl p-4">
             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest">Winner 2025</p>
-            <h3 className="text-xs font-black italic uppercase text-white truncate">{race.past_winners || "Nog onbekend"}</h3>
+            <h3 className="text-xs font-black italic uppercase text-white truncate">{race.past_winners || "Onbekend"}</h3>
           </div>
           <div className="bg-[#161a23] border border-slate-800 rounded-xl p-4">
             <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest">Pole 2025</p>
-            <h3 className="text-xs font-black italic uppercase text-white truncate">{race.past_qualiwinner || "Nog onbekend"}</h3>
+            <h3 className="text-xs font-black italic uppercase text-white truncate">{race.past_qualiwinner || "Onbekend"}</h3>
           </div>
         </div>
 
@@ -76,12 +81,12 @@ export default async function RaceDetailPage({
           {/* KWALIFICATIE */}
           {isQualyLocked ? (
             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex justify-between items-center opacity-40 grayscale">
-              <span className="font-black italic uppercase text-slate-500">Kwalificatie</span>
+              <span className="font-black italic uppercase text-slate-500 text-sm">Kwalificatie</span>
               <span className="text-[9px] font-black uppercase px-2 py-1 bg-slate-800 rounded text-slate-500 tracking-tighter">Locked</span>
             </div>
           ) : (
-            <Link href={`/races/${id}/predict/qualy`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors shadow-lg">
-              <span className="font-black italic uppercase text-white">Kwalificatie</span>
+            <Link href={`/races/${id}/predict/qualy`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors">
+              <span className="font-black italic uppercase text-white text-sm">Kwalificatie</span>
               <span className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase italic">Voorspel &rarr;</span>
             </Link>
           )}
@@ -90,12 +95,12 @@ export default async function RaceDetailPage({
           {race.sprint_race_start && (
             isSprintLocked ? (
               <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex justify-between items-center opacity-40 grayscale">
-                <span className="font-black italic uppercase text-slate-500">Sprint Race</span>
+                <span className="font-black italic uppercase text-slate-500 text-sm">Sprint Race</span>
                 <span className="text-[9px] font-black uppercase px-2 py-1 bg-slate-800 rounded text-slate-500 tracking-tighter">Locked</span>
               </div>
             ) : (
-              <Link href={`/races/${id}/predict/sprint`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors shadow-lg">
-                <span className="font-black italic uppercase text-white">Sprint Race</span>
+              <Link href={`/races/${id}/predict/sprint`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors">
+                <span className="font-black italic uppercase text-white text-sm">Sprint Race</span>
                 <span className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase italic">Voorspel &rarr;</span>
               </Link>
             )
@@ -104,12 +109,12 @@ export default async function RaceDetailPage({
           {/* HOOFDRACE */}
           {isRaceLocked ? (
             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex justify-between items-center opacity-40 grayscale">
-              <span className="font-black italic uppercase text-slate-500">Hoofdrace</span>
+              <span className="font-black italic uppercase text-slate-500 text-sm">Hoofdrace</span>
               <span className="text-[9px] font-black uppercase px-2 py-1 bg-slate-800 rounded text-slate-500 tracking-tighter">Locked</span>
             </div>
           ) : (
-            <Link href={`/races/${id}/predict/race`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors shadow-lg">
-              <span className="font-black italic uppercase text-white">Hoofdrace</span>
+            <Link href={`/races/${id}/predict/race`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors">
+              <span className="font-black italic uppercase text-white text-sm">Hoofdrace</span>
               <span className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase italic">Voorspel &rarr;</span>
             </Link>
           )}
