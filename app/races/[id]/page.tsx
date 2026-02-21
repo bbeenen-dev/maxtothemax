@@ -18,7 +18,9 @@ export default async function RaceDetailPage({
   if (!race) {
     return (
       <div className="min-h-screen bg-[#0b0e14] text-white p-10 text-center">
-        <h1 className="text-xl font-bold uppercase italic text-red-600 tracking-tighter">Race niet gevonden</h1>
+        <h1 className="text-xl font-bold uppercase italic text-red-600 tracking-tighter">
+          Race niet gevonden
+        </h1>
         <Link href="/races" className="block mt-6 text-slate-500 text-xs font-bold uppercase underline tracking-widest italic">
           &larr; Terug naar kalender
         </Link>
@@ -28,7 +30,7 @@ export default async function RaceDetailPage({
 
   const nu = new Date();
   const isQualyLocked = race.qualifying_start ? nu > new Date(race.qualifying_start) : true;
-  const isSprintLocked = race.has_sprint && race.sprint_race_start ? nu > new Date(race.sprint_race_start) : true;
+  const isSprintLocked = race.sprint_race_start ? nu > new Date(race.sprint_race_start) : true;
   const isRaceLocked = race.race_start ? nu > new Date(race.race_start) : true;
 
   return (
@@ -36,7 +38,7 @@ export default async function RaceDetailPage({
       <div className="max-w-3xl mx-auto">
         
         {/* Navigatie */}
-        <Link href="/races" className="inline-block text-slate-500 mb-6 text-[10px] font-black uppercase tracking-widest">
+        <Link href="/races" className="inline-block text-slate-500 mb-6 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">
            &larr; Terug naar kalender
         </Link>
                 
@@ -84,16 +86,16 @@ export default async function RaceDetailPage({
             </Link>
           )}
 
-          {/* SPRINT RACE (Alleen als deze bestaat) */}
-          {race.has_sprint && (
+          {/* SPRINT RACE */}
+          {race.sprint_race_start && (
             isSprintLocked ? (
               <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl flex justify-between items-center opacity-40 grayscale">
                 <span className="font-black italic uppercase text-slate-500">Sprint Race</span>
                 <span className="text-[9px] font-black uppercase px-2 py-1 bg-slate-800 rounded text-slate-500 tracking-tighter">Locked</span>
               </div>
             ) : (
-              <Link href={`/races/${id}/predict/sprint`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors shadow-lg text-red-500">
-                <span className="font-black italic uppercase">Sprint Race</span>
+              <Link href={`/races/${id}/predict/sprint`} className="bg-[#1c232e] border border-slate-800 p-5 rounded-xl flex justify-between items-center active:bg-slate-800 transition-colors shadow-lg">
+                <span className="font-black italic uppercase text-white">Sprint Race</span>
                 <span className="bg-red-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase italic">Voorspel &rarr;</span>
               </Link>
             )
@@ -112,7 +114,7 @@ export default async function RaceDetailPage({
             </Link>
           )}
         </div>
-
+        
       </div>
     </div>
   );
