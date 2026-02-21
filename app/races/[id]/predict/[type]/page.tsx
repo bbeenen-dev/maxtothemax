@@ -64,14 +64,12 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      // 1. Check user
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
       if (!user) {
         setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
       }
 
-      // 2. Haal racenaam op
       const { data: raceData } = await supabase
         .from('races')
         .select('race_name')
@@ -166,15 +164,17 @@ export default function UniversalPredictPage({ params }: PageProps) {
           &lt; Annuleren
         </Link>
 
-        {/* Racenaam boven de titel */}
-        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 italic">
-          {raceName || "Laden..."}
-        </p>
+        {/* Verbeterde Racenaam display */}
+        <div className="mb-2">
+          <p className="text-slate-300 text-xs font-black uppercase tracking-[0.25em] italic leading-none">
+            {raceName || "Laden..."}
+          </p>
+        </div>
 
         <h1 className="text-3xl font-black italic uppercase text-red-600 leading-none mb-1">
           {titles[predictType] || "Voorspelling"}
         </h1>
-        <p className="text-slate-400 text-[10px] font-bold uppercase mb-8 italic tracking-widest">
+        <p className="text-slate-500 text-[10px] font-bold uppercase mb-8 italic tracking-widest leading-none">
           Zet jouw top {predictType === 'qualy' ? '3' : predictType === 'sprint' ? '8' : '10'} bovenaan
         </p>
 
