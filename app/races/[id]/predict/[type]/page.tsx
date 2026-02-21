@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 
@@ -15,8 +14,6 @@ interface PageProps {
 }
 
 export default function UniversalPredictPage({ params }: PageProps) {
-  const router = useRouter();
-  
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
@@ -82,47 +79,43 @@ export default function UniversalPredictPage({ params }: PageProps) {
         throw new Error("Sessie niet herkend. Log opnieuw in.");
       }
 
-      // 1. Bepaal de tabelnaam
+      // 1. Tabelnaam bepalen
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
-      // 2. Bepaal de kolomnaam en hoeveel drivers we moeten pakken
+      // 2. Kolomnaam en aantal drivers bepalen
       let targetColumn = "";
-      let numberOfDrivers = 0;
+      let count = 0;
 
       if (predictType === 'qualy') {
         targetColumn = "top_3_drivers";
-        numberOfDrivers = 3;
+        count = 3;
       } else if (predictType === 'sprint') {
         targetColumn = "top_8_drivers";
-        numberOfDrivers = 8;
+        count = 8;
       } else {
         targetColumn = "top_10_drivers";
-        numberOfDrivers = 10;
+        count = 10;
       }
 
-      // We pakken de ID's van de bovenste X drivers
-      const topDriversIds = drivers.slice(0, numberOfDrivers).map(d => d.id);
+      const topDriversIds = drivers.slice(0, count).map(d => d.id);
 
-      // 3. Bouw de payload op met de juiste kolomnaam
-      const payload = {
+      // 3. Payload bouwen (ZONDER updated_at)
+      // Gebruik 'Record' type om TypeScript errors in VS Code te voorkomen
+      const payload: Record<string, any> = {
         user_id: user.id,
         race_id: raceId,
-        [targetColumn]: topDriversIds, // Gebruik dynamische key
-        updated_at: new Date().toISOString(),
       };
+      payload[targetColumn] = topDriversIds;
 
       const { error: dbError } = await supabase
         .from(tableName)
         .upsert(payload, { onConflict: 'user_id, race_id' });
 
-      if (dbError) {
-        console.error("Supabase Error:", dbError);
-        throw new Error(`DB [${dbError.code}]: ${dbError.message}`);
-      }
+      if (dbError) throw dbError;
 
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
@@ -221,7 +214,9 @@ export default function UniversalPredictPage({ params }: PageProps) {
           }`}>
             {message}
             {saveStatus === 'success' && (
-              <p className="text-[8px] mt-2 opacity-50">Je wordt nu teruggestuurd naar de race...</p>
+              <p className="text-[8px] mt-2 opacity-50 font-bold uppercase tracking-tight">
+                Je wordt nu teruggestuurd naar de race...
+              </p>
             )}
           </div>
         )}
