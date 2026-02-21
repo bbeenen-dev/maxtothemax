@@ -17,7 +17,7 @@ interface PageProps {
 export default function UniversalPredictPage({ params }: PageProps) {
   const router = useRouter();
   
-  // Next.js 15 unwrapping van de Promise params
+  // Next.js 15 unwrapping
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
@@ -27,7 +27,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Titels mappen op basis van het type in de URL
   const titles: Record<string, string> = {
     qualy: "Qualifying Top 3",
     sprint: "Sprint Top 3",
@@ -50,9 +49,9 @@ export default function UniversalPredictPage({ params }: PageProps) {
   const [message, setMessage] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
 
-  // Check login status bij het laden (gebruik getUser voor server-side validatie op mobiel)
   useEffect(() => {
     const checkUser = async () => {
+      // Forceer een verse check zonder cache
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
       if (!user) {
@@ -76,7 +75,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      // Forceer een check op de actuele gebruiker
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
@@ -90,7 +88,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
-      // Payload voor de Top 3
       const payload = {
         user_id: user.id,
         race_id: raceId,
@@ -105,7 +102,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .upsert(payload, { onConflict: 'user_id, race_id' });
 
       if (dbError) {
-        // Specifieke debug informatie tonen
         console.error("Supabase Error:", dbError);
         throw new Error(`DB [${dbError.code}]: ${dbError.message}`);
       }
@@ -114,7 +110,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
       
       setTimeout(() => {
         router.push(`/races/${raceId}`);
-        router.refresh();
+        // Forceer een refresh om de cache te legen
+        window.location.href = `/races/${raceId}`;
       }, 1200);
       
     } catch (err: any) {
@@ -126,7 +123,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-white p-6">
+    <div className="min-h-screen bg-[#0b0e14] text-white p-6" key={predictType}>
       <div className="max-w-md mx-auto">
         <Link 
           href={`/races/${raceId}`} 
@@ -145,7 +142,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
         <div className="space-y-2 mb-8">
           {drivers.map((driver, index) => (
             <div 
-              key={driver.id}
+              key={`${predictType}-${driver.id}`}
               className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                 index < 3 
                   ? 'bg-red-600/10 border-red-600/50 shadow-lg shadow-red-900/10' 
