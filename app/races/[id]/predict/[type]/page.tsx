@@ -3,7 +3,7 @@
 import { useState, use, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import toegevoegd
+import { useRouter } from 'next/navigation';
 
 interface Driver {
   driver_id: string;
@@ -18,7 +18,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
-  const router = useRouter(); // Router geïnitialiseerd
+  const router = useRouter();
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,13 +65,12 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Gebruik getSession voor client-side stabiliteit (minder AbortErrors)
+      // Gebruik getSession (leest uit cookie/storage zonder de server direct te dwingen tot refresh)
       const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+      setIsLoggedIn(!!session?.user);
       
-      setIsLoggedIn(!!user);
-      if (!user) {
-        setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
+      if (!session?.user) {
+        setMessage("⚠️ Je bent niet ingelogd.");
       }
 
       const { data: raceData } = await supabase
@@ -80,9 +79,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .eq('id', raceId)
         .single();
       
-      if (raceData) {
-        setRaceName(raceData.race_name);
-      }
+      if (raceData) setRaceName(raceData.race_name);
     };
     fetchData();
   }, [supabase, raceId]);
@@ -91,77 +88,74 @@ export default function UniversalPredictPage({ params }: PageProps) {
     const newDrivers = [...drivers];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newDrivers.length) return;
-    
     [newDrivers[index], newDrivers[targetIndex]] = [newDrivers[targetIndex], newDrivers[index]];
     setDrivers(newDrivers);
   };
 
   const handleSave = async () => {
+    if (loading) return;
+    
     setLoading(true);
     setSaveStatus('idle');
     setMessage("⏳ Bezig met opslaan...");
 
     try {
+      // 1. Haal sessie op (meest stabiele methode voor client-side writes)
       const { data: { session }, error: authError } = await supabase.auth.getSession();
-      const user = session?.user;
       
-      if (authError || !user) {
+      if (authError || !session?.user) {
         setIsLoggedIn(false);
-        throw new Error("Sessie niet herkend. Log opnieuw in.");
+        throw new Error("Sessie verlopen. Log opnieuw in.");
       }
 
+      const user = session.user;
+
+      // 2. Bepaal tabel en kolom
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
         race: "predictions_race"
       }[predictType] || "predictions_race";
 
-      let targetColumn = "";
-      let count = 0;
+      const config = {
+        qualy: { col: "top_3_drivers", count: 3 },
+        sprint: { col: "top_8_drivers", count: 8 },
+        race: { col: "top_10_drivers", count: 10 }
+      }[predictType as 'qualy' | 'sprint' | 'race'] || { col: "top_10_drivers", count: 10 };
 
-      if (predictType === 'qualy') {
-        targetColumn = "top_3_drivers";
-        count = 3;
-      } else if (predictType === 'sprint') {
-        targetColumn = "top_8_drivers";
-        count = 8;
-      } else {
-        targetColumn = "top_10_drivers";
-        count = 10;
-      }
+      const topDriversIds = drivers.slice(0, config.count).map(d => d.driver_id);
 
-      const topDriversIds = drivers.slice(0, count).map(d => d.driver_id);
-
-      const payload: Record<string, any> = {
-        user_id: user.id,
-        race_id: raceId,
-      };
-      payload[targetColumn] = topDriversIds;
-
+      // 3. Voer de upsert uit
       const { error: dbError } = await supabase
         .from(tableName)
-        .upsert(payload, { onConflict: 'user_id, race_id' });
+        .upsert({
+          user_id: user.id,
+          race_id: raceId,
+          [config.col]: topDriversIds,
+        }, { onConflict: 'user_id, race_id' });
 
       if (dbError) throw dbError;
 
+      // 4. Succes afhandeling
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
       
-      // CRUCIAAL STUKJE: Refresh de data en navigeer terug
+      // 5. Navigatie (wacht kort zodat gebruiker het succes ziet)
       setTimeout(() => {
-        router.refresh(); // Update de server-side cache
-        router.push(`/races/${raceId}`); // Navigeer naar de racecard
+        router.refresh(); 
+        router.push(`/races/${raceId}`);
       }, 1000);
       
     } catch (err: any) {
+      console.error("Save error:", err);
       setSaveStatus('error');
-      setMessage(`❌ Fout: ${err.message || "Database error"}`);
-      setLoading(false); // Alleen resetten bij fout, anders de navigatie afwachten
+      setMessage(`❌ Fout: ${err.message || "Er ging iets mis"}`);
+      setLoading(false); // Alleen bij fout de knop weer activeren
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-white p-6" key={predictType}>
+    <div className="min-h-screen bg-[#0b0e14] text-white p-6">
       <div className="max-w-md mx-auto">
         <Link 
           href={`/races/${raceId}`} 
@@ -187,7 +181,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
           {drivers.map((driver, index) => {
             const limit = predictType === 'qualy' ? 3 : predictType === 'sprint' ? 8 : 10;
             const isPointZone = index < limit;
-
             return (
               <div 
                 key={`${predictType}-${driver.driver_id}`}
@@ -207,18 +200,14 @@ export default function UniversalPredictPage({ params }: PageProps) {
                 <div className="flex gap-1">
                   <button 
                     onClick={() => move(index, 'up')} 
-                    disabled={index === 0}
+                    disabled={index === 0 || loading}
                     className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
-                  >
-                    ▲
-                  </button>
+                  >▲</button>
                   <button 
                     onClick={() => move(index, 'down')} 
-                    disabled={index === drivers.length - 1}
+                    disabled={index === drivers.length - 1 || loading}
                     className="p-2 bg-slate-800 rounded-lg text-xs hover:bg-slate-700 disabled:opacity-10 transition-colors"
-                  >
-                    ▼
-                  </button>
+                  >▼</button>
                 </div>
               </div>
             );
@@ -236,14 +225,19 @@ export default function UniversalPredictPage({ params }: PageProps) {
                 : "bg-red-600 text-white hover:bg-red-700 active:scale-95 shadow-red-900/20"
           }`}
         >
-          {loading ? "Verwerken..." : saveStatus === 'success' ? "Opgeslagen!" : "Bevestig Voorspelling"}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Verwerken...
+            </span>
+          ) : saveStatus === 'success' ? "Opgeslagen!" : "Bevestig Voorspelling"}
         </button>
 
         {message && (
-          <div className={`mt-6 p-5 rounded-2xl text-center text-[11px] font-black uppercase tracking-widest italic border-2 transition-all animate-pulse ${
+          <div className={`mt-6 p-5 rounded-2xl text-center text-[11px] font-black uppercase tracking-widest italic border-2 transition-all ${
             message.includes('✅') 
               ? 'bg-green-600/10 text-green-400 border-green-500/50' 
-              : 'bg-red-900/20 text-red-500 border-red-500/20'
+              : 'bg-red-900/20 text-red-500 border-red-500/20 animate-pulse'
           }`}>
             {message}
           </div>
