@@ -39,11 +39,18 @@ export function Navbar() {
     };
 
     const getUser = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserEmail(user?.email ?? null);
-      await checkUserStatus(user?.id);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        setUserEmail(user?.email ?? null);
+        if (user) {
+          await checkUserStatus(user.id);
+        }
+      } catch (error) {
+        console.error("Auth fetch error:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getUser();
@@ -64,8 +71,8 @@ export function Navbar() {
   const handleLogout = async () => {
     setLoading(true);
     await supabase.auth.signOut();
-    // BELANGRIJK: Omdat (auth) een route group is, is de URL simpelweg /login
-    router.push('/login');
+    // Aangepast naar jouw specifieke mappenstructuur (zonder haakjes)
+    router.push('/auth/login');
     router.refresh();
   };
 
@@ -144,8 +151,8 @@ export function Navbar() {
               </button>
             ) : (
               <Link 
-                // VERBETERD: href is /login (Next.js negeert de (auth) mapnaam in de URL)
-                href="/login" 
+                // Aangepast: href is nu /auth/login conform jouw structuur
+                href="/auth/login" 
                 className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-white/5"
               >
                 Login
