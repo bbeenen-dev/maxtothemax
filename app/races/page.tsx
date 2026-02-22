@@ -30,22 +30,21 @@ export default async function CalendarPage() {
     if (!fp1 || !race) return "";
     const start = new Date(fp1);
     const end = new Date(race);
-    const options: Intl.DateTimeFormatOptions = { month: 'short' }; // 'short' voor compacte weergave naast de stad
+    const options: Intl.DateTimeFormatOptions = { month: 'short' };
     const month = end.toLocaleDateString('nl-NL', options);
     
     if (start.getMonth() === end.getMonth()) {
       return `${start.getDate()}-${end.getDate()} ${month}`;
     }
-    const startMonth = start.toLocaleDateString('nl-NL', { month: 'short' });
-    return `${start.getDate()} ${startMonth} - ${end.getDate()} ${month}`;
+    return `${start.getDate()} ${start.toLocaleDateString('nl-NL', { month: 'short' })} - ${end.getDate()} ${month}`;
   };
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white p-6 md:p-12">
       <div className="max-w-5xl mx-auto">
         <header className="mb-12">
-          <h1 className="text-5xl font-black italic uppercase tracking-tighter border-l-8 border-red-600 pl-6">
-            F1 Kalender <span className="text-red-600">2026</span>
+          <h1 className="text-5xl font-black italic uppercase tracking-tighter border-l-8 border-slate-800 pl-6">
+            F1 Kalender <span className="text-slate-500">2026</span>
           </h1>
         </header>
 
@@ -54,61 +53,67 @@ export default async function CalendarPage() {
             <p className="text-slate-500 font-medium">De kalender is leeg.</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {races.map((race) => {
               const preds = allPredictions.filter(p => p.race_id === race.id);
-              const hasQuali = preds.some(p => p.type === 'qualy');
-              const hasRace = preds.some(p => p.type === 'race');
-              const hasSprint = preds.some(p => p.type === 'sprint');
-              const isSprintWeekend = !!race.sprint_race_start;
-              const isComplete = isSprintWeekend 
-                ? (hasQuali && hasRace && hasSprint) 
-                : (hasQuali && hasRace);
+              const isComplete = !!race.sprint_race_start 
+                ? (preds.some(p => p.type === 'qualy') && preds.some(p => p.type === 'race') && preds.some(p => p.type === 'sprint'))
+                : (preds.some(p => p.type === 'qualy') && preds.some(p => p.type === 'race'));
 
               return (
                 <Link 
                   key={race.id} 
                   href={`/races/${race.id}`} 
-                  className={`group relative bg-[#161a23] border-2 rounded-2xl p-6 transition-all duration-300 overflow-hidden ${
-                    isComplete ? 'border-green-500 shadow-lg shadow-green-900/10' : 'border-slate-800 hover:border-red-600'
-                  }`}
+                  className="group relative p-[2px] rounded-3xl transition-all duration-500 overflow-hidden block"
                 >
-                  <div className="relative z-10">
+                  {/* De Gradient Border (De lijn die de bocht omgaat) */}
+                  <div className={`absolute inset-0 transition-opacity duration-500 ${
+                    isComplete 
+                      ? 'bg-[conic-gradient(from_180deg_at_0%_50%,#22c55e_0deg,#22c55e_40deg,transparent_90deg)] opacity-100' 
+                      : 'bg-[conic-gradient(from_180deg_at_0%_50%,#334155_0deg,#334155_40deg,transparent_90deg)] opacity-60 group-hover:opacity-100'
+                  }`} />
+
+                  {/* De Kaart Inhoud */}
+                  <div className="relative bg-[#161a23] rounded-[calc(1.5rem-1px)] p-6 h-full transition-colors group-hover:bg-[#1c222d]">
                     <div className="flex justify-between items-start mb-4">
-                      <span className={`${isComplete ? 'text-green-500' : 'text-red-600'} font-black italic uppercase text-sm tracking-widest`}>
+                      <span className={`${isComplete ? 'text-green-500' : 'text-slate-500'} font-black italic uppercase text-xs tracking-widest`}>
                         Round {race.round}
                       </span>
                       {isComplete && (
-                        <span className="text-[10px] bg-green-500 text-[#0b0e14] font-bold px-2 py-0.5 rounded uppercase animate-pulse">
-                          Ready
-                        </span>
+                        <div className="bg-green-500/20 text-green-500 p-1 rounded-full animate-pulse">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
                       )}
                     </div>
                     
-                    <h2 className="text-2xl font-black italic uppercase mb-1 leading-tight">{race.race_name}</h2>
+                    <h2 className="text-2xl font-black italic uppercase mb-1 leading-tight tracking-tight group-hover:text-white transition-colors">
+                      {race.race_name}
+                    </h2>
                     
-                    {/* Nieuwe sectie voor City Name en Datum */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-white font-bold uppercase text-xs tracking-wider">
-                        {race.city_name || "Unknown City"}
+                    <div className="flex items-center gap-2 mb-4">
+                      <p className="text-slate-300 font-bold uppercase text-[10px] tracking-wider italic">
+                        {race.city_name || "Unknown"}
                       </p>
-                      <span className="text-slate-600">•</span>
-                      <p className="text-slate-400 text-xs font-medium">
+                      <span className="text-slate-700 text-[10px]">•</span>
+                      <p className="text-slate-500 text-[10px] font-medium uppercase">
                         {formatDateRange(race.fp1_start, race.race_start)}
                       </p>
                     </div>
 
-                    {/* De Streepjes (Indicators) */}
-                    <div className="flex gap-1.5 mt-5">
-                      <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasQuali ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
-                      {isSprintWeekend && (
-                        <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasSprint ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
+                    <div className="flex gap-1.5 mt-2">
+                      <div className={`h-1 w-6 rounded-full ${preds.some(p => p.type === 'qualy') ? 'bg-green-500' : 'bg-slate-800'}`} />
+                      {!!race.sprint_race_start && (
+                        <div className={`h-1 w-6 rounded-full ${preds.some(p => p.type === 'sprint') ? 'bg-green-500' : 'bg-slate-800'}`} />
                       )}
-                      <div className={`h-1.5 w-8 rounded-full transition-all duration-500 ${hasRace ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-slate-800'}`} />
+                      <div className={`h-1 w-6 rounded-full ${preds.some(p => p.type === 'race') ? 'bg-green-500' : 'bg-slate-800'}`} />
                     </div>
                   </div>
                   
-                  <div className={`absolute -right-4 -bottom-6 text-8xl font-black italic transition-colors ${isComplete ? 'text-green-500/10' : 'text-white/5'}`}>
+                  <div className={`absolute -right-2 -bottom-4 text-7xl font-black italic transition-colors select-none pointer-events-none ${
+                    isComplete ? 'text-green-500/5' : 'text-white/5'
+                  }`}>
                     {race.round}
                   </div>
                 </Link>
