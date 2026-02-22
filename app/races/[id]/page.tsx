@@ -42,8 +42,6 @@ export default function RaceCardPage({ params }: PageProps) {
     async function getRaceAndStatus() {
       try {
         setLoading(true);
-        
-        // 1. Haal de race gegevens op
         const { data: raceData, error: raceError } = await supabase
           .from('races')
           .select('id, race_name, sprint_race_start')
@@ -53,11 +51,9 @@ export default function RaceCardPage({ params }: PageProps) {
         if (raceError) throw raceError;
         setRace(raceData);
 
-        // 2. Haal de huidige gebruiker op
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-          // 3. Check parallel of er voorspellingen bestaan in de 3 tabellen
           const [qualyCheck, sprintCheck, raceCheck] = await Promise.all([
             supabase.from('predictions_qualifying').select('id').eq('race_id', raceId).eq('user_id', user.id).maybeSingle(),
             supabase.from('predictions_sprint').select('id').eq('race_id', raceId).eq('user_id', user.id).maybeSingle(),
@@ -70,7 +66,6 @@ export default function RaceCardPage({ params }: PageProps) {
             race: !!raceCheck.data
           });
         }
-
       } catch (err: any) {
         console.error("Database Error:", err);
         setDbError(err.message);
@@ -78,7 +73,6 @@ export default function RaceCardPage({ params }: PageProps) {
         setLoading(false);
       }
     }
-    
     getRaceAndStatus();
   }, [raceId, supabase]);
 
@@ -101,62 +95,121 @@ export default function RaceCardPage({ params }: PageProps) {
         </Link>
 
         <div className="mb-10">
-          <h1 className="text-4xl font-black italic uppercase text-white leading-tight">
+          <h1 className="text-4xl font-black italic uppercase text-white leading-tight tracking-tighter">
             {race?.race_name || "Race"} <span className="text-red-600">Card</span>
           </h1>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-3 italic">
-             Maak je voorspellingen
+             Beheer je voorspellingen
           </p>
         </div>
 
         <div className="space-y-4">
-          {/* Qualifying Knop */}
-          <Link href={`/races/${raceId}/predict/qualy`}>
-            <div className={`bg-[#161a23] border p-6 rounded-2xl transition-all group relative overflow-hidden block ${status.qualy ? 'border-green-500/50 hover:border-green-500' : 'border-slate-800 hover:border-red-600'}`}>
-              <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${status.qualy ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-600'}`}></div>
-              <div className="flex justify-between items-center">
+          {/* QUALIFYING */}
+          <Link href={`/races/${raceId}/predict/qualy`} className="block group">
+            <div className={`bg-[#161a23] border-y border-r transition-all relative overflow-hidden p-6 rounded-r-2xl ${
+              status.qualy 
+                ? 'border-green-500/30 bg-green-500/[0.02]' 
+                : 'border-slate-800 hover:border-red-600/50'
+            }`}>
+              {/* De Dikkere Linkerstreep (Accent) */}
+              <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${
+                status.qualy 
+                  ? 'bg-green-500 shadow-[2px_0_15px_rgba(34,197,94,0.5)]' 
+                  : 'bg-red-600 group-hover:w-2'
+              }`} />
+              
+              <div className="flex justify-between items-center relative z-10">
                 <div>
-                  <h2 className={`text-xl font-black italic uppercase transition-colors ${status.qualy ? 'text-green-500' : 'group-hover:text-red-600'}`}>Qualifying</h2>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-white/40">Top 3 Shootout</p>
+                  <h2 className={`text-xl font-black italic uppercase transition-colors ${
+                    status.qualy ? 'text-green-500' : 'group-hover:text-red-600'
+                  }`}>Qualifying</h2>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Top 3 Shootout</p>
                 </div>
-                {status.qualy && <span className="text-green-500 font-black text-xs italic">GEDAAN</span>}
+                {status.qualy && (
+                  <div className="flex flex-col items-end">
+                    <span className="text-green-500 font-black text-xs italic">READY</span>
+                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Link>
 
           {/* SPRINT RACE */}
           {race?.sprint_race_start && (
-            <Link href={`/races/${raceId}/predict/sprint`}>
-              <div className={`bg-[#161a23] border p-6 rounded-2xl transition-all group relative overflow-hidden block ${status.sprint ? 'border-green-500/50 hover:border-green-500' : 'border-slate-800 hover:border-orange-500'}`}>
-                <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${status.sprint ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-orange-500'}`}></div>
-                <div className="flex justify-between items-center">
+            <Link href={`/races/${raceId}/predict/sprint`} className="block group">
+              <div className={`bg-[#161a23] border-y border-r transition-all relative overflow-hidden p-6 rounded-r-2xl ${
+                status.sprint 
+                  ? 'border-green-500/30 bg-green-500/[0.02]' 
+                  : 'border-slate-800 hover:border-orange-500/50'
+              }`}>
+                <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${
+                  status.sprint 
+                    ? 'bg-green-500 shadow-[2px_0_15px_rgba(34,197,94,0.5)]' 
+                    : 'bg-orange-500 group-hover:w-2'
+                }`} />
+                <div className="flex justify-between items-center relative z-10">
                   <div>
-                    <h2 className={`text-xl font-black italic uppercase transition-colors ${status.sprint ? 'text-green-500' : 'group-hover:text-orange-500'}`}>Sprint Race</h2>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic text-white/40">Zaterdag-race</p>
+                    <h2 className={`text-xl font-black italic uppercase transition-colors ${
+                      status.sprint ? 'text-green-500' : 'group-hover:text-orange-500'
+                    }`}>Sprint Race</h2>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">Zaterdag-race</p>
                   </div>
-                  {status.sprint && <span className="text-green-500 font-black text-xs italic">GEDAAN</span>}
+                  {status.sprint && (
+                    <div className="flex flex-col items-end">
+                      <span className="text-green-500 font-black text-xs italic">READY</span>
+                      <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </Link>
           )}
 
-          {/* Main Race Knop */}
-          <Link href={`/races/${raceId}/predict/race`}>
-            <div className={`bg-[#161a23] border p-6 rounded-2xl transition-all group relative overflow-hidden block ${status.race ? 'border-green-500/50 hover:border-green-500' : 'border-slate-800 hover:border-red-600'}`}>
-              <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${status.race ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-600'}`}></div>
-              <div className="flex justify-between items-center">
+          {/* MAIN RACE */}
+          <Link href={`/races/${raceId}/predict/race`} className="block group">
+            <div className={`bg-[#161a23] border-y border-r transition-all relative overflow-hidden p-6 rounded-r-2xl ${
+              status.race 
+                ? 'border-green-500/30 bg-green-500/[0.02]' 
+                : 'border-slate-800 hover:border-red-600/50'
+            }`}>
+              <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${
+                status.race 
+                  ? 'bg-green-500 shadow-[2px_0_15px_rgba(34,197,94,0.5)]' 
+                  : 'bg-red-600 group-hover:w-2'
+              }`} />
+              <div className="flex justify-between items-center relative z-10">
                 <div>
-                  <h2 className={`text-xl font-black italic uppercase transition-colors ${status.race ? 'text-green-500' : 'group-hover:text-red-600'}`}>Grand Prix</h2>
-                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-white/40">Hoofdrace Top 10</p>
+                  <h2 className={`text-xl font-black italic uppercase transition-colors ${
+                    status.race ? 'text-green-500' : 'group-hover:text-red-600'
+                  }`}>Grand Prix</h2>
+                  <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Hoofdrace Top 10</p>
                 </div>
-                {status.race && <span className="text-green-500 font-black text-xs italic">GEDAAN</span>}
+                {status.race && (
+                  <div className="flex flex-col items-end">
+                    <span className="text-green-500 font-black text-xs italic">READY</span>
+                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Link>
         </div>
 
         {dbError && (
-          <div className="mt-10 p-4 bg-red-900/20 border border-red-900/40 rounded-xl text-red-500 text-[10px] uppercase font-black tracking-widest">
+          <div className="mt-10 p-4 bg-red-900/20 border-l-4 border-red-600 rounded-r-xl text-red-500 text-[10px] uppercase font-black tracking-widest">
             Fout bij laden: {dbError}
           </div>
         )}
@@ -164,7 +217,7 @@ export default function RaceCardPage({ params }: PageProps) {
         {!race?.sprint_race_start && !loading && !dbError && (
           <div className="mt-12 pt-8 border-t border-slate-900 text-center">
              <p className="text-[8px] text-slate-700 uppercase font-black tracking-[0.2em]">
-                Geen Sprintrace beschikbaar voor dit weekend
+                Geen Sprintrace voor dit weekend
              </p>
           </div>
         )}
