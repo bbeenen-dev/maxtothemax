@@ -31,18 +31,31 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // PAD-DEFINITIES
-  const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
-  const isPublicPage = request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/races";
+  const { pathname } = request.nextUrl;
   
-  // NIEUW: Check of dit een achtergrond-dataverzoek van Next.js is (RSC/Prefetch)
-  // Dit voorkomt dat de browser de verbinding verbreekt (AbortError) bij navigatie
+  const isAuthPage = pathname.startsWith("/auth");
+  const isPublicPage = pathname === "/" || pathname === "/races";
+  
+  // NIEUW: Voorkom dat statische bestanden (CSS, JS, afbeeldingen) worden geblokkeerd
+  // Zonder dit blijft je scherm wit omdat de browser de styling niet mag ophalen
+  const isStaticAsset = 
+    pathname.startsWith("/_next") || 
+    pathname.includes("/favicon.ico") ||
+    pathname.includes("."); // Checkt voor bestandsextensies zoals .css, .js, .png
+
+  // Check of dit een achtergrond-dataverzoek van Next.js is (RSC/Prefetch)
   const isDataRequest = 
     request.headers.get("x-nextjs-data") || 
-    request.nextUrl.pathname.startsWith("/_next/data");
+    pathname.startsWith("/_next/data");
 
   // REDIRECT LOGICA
-  // We redirecten NOOIT bij data-requests of publieke pagina's
-  if (!user && !isAuthPage && !isPublicPage && !isDataRequest) {
+  // We redirecten NOOIT als:
+  // 1. Er een user is
+  // 2. Je al op een auth-pagina bent
+  // 3. Het een publieke pagina is
+  // 4. Het een data-request is (voorkomt AbortError)
+  // 5. Het een statisch bestand is (voorkomt wit scherm)
+  if (!user && !isAuthPage && !isPublicPage && !isDataRequest && !isStaticAsset) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
