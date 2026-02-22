@@ -9,6 +9,7 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false); // Nieuwe state voor admin-status
   const [loading, setLoading] = useState(true);
 
   // Initialiseer supabase client
@@ -18,16 +19,33 @@ export function Navbar() {
   );
 
   useEffect(() => {
+    const checkUserStatus = async (userId: string | undefined) => {
+      if (!userId) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      setIsAdmin(profile?.is_admin ?? false);
+    };
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserEmail(user?.email ?? null);
+      await checkUserStatus(user?.id);
       setLoading(false);
     };
 
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUserEmail(session?.user?.email ?? null);
+      await checkUserStatus(session?.user?.id);
     });
 
     return () => subscription.unsubscribe();
@@ -74,6 +92,20 @@ export function Navbar() {
         >
           Races
         </Link>
+
+        {/* ADMIN LINK - Alleen zichtbaar als isAdmin TRUE is */}
+        {isAdmin && (
+          <Link 
+            href="/admin" 
+            className={`p-2 px-3 rounded-xl transition-all text-xs font-bold uppercase border ${
+              pathname.startsWith("/admin") 
+                ? "text-white bg-blue-600 border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
+                : "text-blue-400 border-blue-900/50 hover:bg-blue-500/10"
+            }`}
+          >
+            Admin
+          </Link>
+        )}
 
         {/* 3. Status indicator rechts uitgelijnd */}
         <div className="ml-auto flex items-center">
