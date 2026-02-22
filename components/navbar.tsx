@@ -53,7 +53,8 @@ export function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    // Aangepast naar jouw mappenstructuur
+    router.push('/auth/login');
     router.refresh();
   };
 
@@ -132,7 +133,8 @@ export function Navbar() {
               </button>
             ) : (
               <Link 
-                href="/login" 
+                // Aangepast naar jouw mappenstructuur
+                href="/auth/login" 
                 className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
               >
                 Login
