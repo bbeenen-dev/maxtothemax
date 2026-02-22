@@ -41,10 +41,13 @@ export function Navbar() {
     const getUser = async () => {
       try {
         setLoading(true);
+        // We gebruiken getUser() voor een harde check bij de server/middleware
         const { data: { user } } = await supabase.auth.getUser();
         setUserEmail(user?.email ?? null);
         if (user) {
           await checkUserStatus(user.id);
+        } else {
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error("Auth fetch error:", error);
@@ -66,12 +69,14 @@ export function Navbar() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+    
+    // PATHNAME TOEVOEGEN: 
+    // Dit zorgt ervoor dat de navbar bij elke klik op een link opnieuw valideert
+  }, [supabase, pathname]); 
 
   const handleLogout = async () => {
     setLoading(true);
     await supabase.auth.signOut();
-    // Aangepast naar jouw specifieke mappenstructuur (zonder haakjes)
     router.push('/auth/login');
     router.refresh();
   };
@@ -151,7 +156,6 @@ export function Navbar() {
               </button>
             ) : (
               <Link 
-                // Aangepast: href is nu /auth/login conform jouw structuur
                 href="/auth/login" 
                 className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-white/5"
               >

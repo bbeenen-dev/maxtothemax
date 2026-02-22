@@ -7,12 +7,17 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Gebruik ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll();
+        },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          // We vernieuwen de response alleen als dat nodig is voor de browser cookies
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -22,17 +27,24 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // CRUCIAAL: Verifieer de gebruiker
+  // Verifieer de gebruiker
   const { data: { user } } = await supabase.auth.getUser();
 
   // PAD-DEFINITIES
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
   const isPublicPage = request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/races";
+  
+  // NIEUW: Check of dit een achtergrond-dataverzoek van Next.js is (RSC/Prefetch)
+  // Dit voorkomt dat de browser de verbinding verbreekt (AbortError) bij navigatie
+  const isDataRequest = 
+    request.headers.get("x-nextjs-data") || 
+    request.nextUrl.pathname.startsWith("/_next/data");
 
-  // REDIRECT LOGICA: Alleen als je geen user hebt en op een beschermde pagina bent
-  if (!user && !isAuthPage && !isPublicPage) {
+  // REDIRECT LOGICA
+  // We redirecten NOOIT bij data-requests of publieke pagina's
+  if (!user && !isAuthPage && !isPublicPage && !isDataRequest) {
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login"; // Matcht jouw app/auth/login structuur
+    url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
 
