@@ -6,7 +6,6 @@ export default async function HomePage() {
   const supabase = await createClient();
 
   // Haal de eerstvolgende race op voor de "Next Race" kaart
-  // We voegen city_name expliciet toe aan de select
   const { data: nextRaces } = await supabase
     .from('races')
     .select('*, city_name')
@@ -19,10 +18,8 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white">
       
-      {/* Hero Section: Volledige Breedte Panorama */}
+      {/* Hero Section */}
       <div className="relative w-full">
-        
-        {/* De Container: Forceert volledige breedte en een vaste panorama hoogte */}
         <div className="relative w-full h-[35vh] md:h-[45vh] overflow-hidden border-b border-red-600/20">
           <Image 
             src="/hero-2026.JPG" 
@@ -32,12 +29,9 @@ export default async function HomePage() {
             quality={100}
             className="object-cover object-center" 
           />
-          
-          {/* Gradients voor diepte en naadloze overloop */}
           <div className="absolute inset-0 bg-gradient-to-b from-[#0b0e14]/40 via-transparent to-[#0b0e14] z-10" />
         </div>
 
-        {/* Hero Content: Over de foto gepositioneerd */}
         <div className="relative z-20 text-center px-4 -mt-20 md:-mt-24 pb-12">
           <h1 className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
             F1 <span className="text-red-600">Max2TheMax</span>
@@ -48,12 +42,15 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Content sectie met kaarten */}
+      {/* Content sectie */}
       <div className="max-w-6xl mx-auto px-6 relative z-30 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* KAART 1: De Volgende Race */}
-          <div className="md:col-span-2 bg-[#161a23] border border-slate-800 rounded-3xl p-8 shadow-2xl overflow-hidden relative group">
+          {/* KAART 1: De Volgende Race met Accent Border */}
+          <div className="md:col-span-2 bg-[#161a23] border-y border-r border-slate-800 rounded-r-3xl p-8 shadow-2xl overflow-hidden relative group">
+            {/* De Accent Border */}
+            <div className="absolute top-0 left-0 w-2 h-full bg-red-600 shadow-[2px_0_15px_rgba(220,38,38,0.4)]" />
+            
             <div className="relative z-10">
               <span className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full italic">
                 Next Event
@@ -64,7 +61,6 @@ export default async function HomePage() {
               </h2>
               
               <p className="text-slate-400 mb-8 uppercase tracking-widest text-sm font-bold">
-                {/* Aangepast naar city_name in plaats van location_code */}
                 {nextRace ? `Round ${nextRace.round} • ${nextRace.city_name || "Locatie onbekend"}` : ""}
               </p>
 
@@ -78,7 +74,6 @@ export default async function HomePage() {
               )}
             </div>
 
-            {/* Decoratieve achtergrond tekst (gebruikt city_name fallback) */}
             {nextRace && (
               <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.03] select-none pointer-events-none uppercase">
                 {nextRace.city_name?.substring(0, 3) || nextRace.location_code}
@@ -86,10 +81,11 @@ export default async function HomePage() {
             )}
           </div>
 
-          {/* KAART 2: Snelmenu */}
+          {/* KAART 2: Snelmenu met Accent Borders */}
           <div className="space-y-6">
             <Link href="/races" className="block group">
-              <div className="bg-[#1c232e] border border-slate-700 p-6 rounded-2xl group-hover:border-red-600 transition-all">
+              <div className="bg-[#1c232e] border-y border-r border-slate-700 p-6 rounded-r-2xl relative overflow-hidden transition-all group-hover:border-red-600/50">
+                <div className="absolute top-0 left-0 w-1 h-full bg-slate-700 transition-all group-hover:bg-red-600 group-hover:w-1.5" />
                 <h3 className="font-black italic uppercase text-xl group-hover:text-red-500 transition-colors">
                   Volledige Kalender
                 </h3>
@@ -98,13 +94,15 @@ export default async function HomePage() {
             </Link>
 
             <Link href="/predictions/season" className="block group">
-              <div className="bg-gradient-to-br from-red-900/40 to-red-600/10 border border-red-900/50 p-6 rounded-2xl group-hover:border-red-500 transition-all">
+              <div className="bg-gradient-to-br from-red-900/20 to-red-600/5 border-y border-r border-red-900/30 p-6 rounded-r-2xl relative overflow-hidden transition-all group-hover:border-red-500/50">
+                <div className="absolute top-0 left-0 w-1 h-full bg-red-900/50 transition-all group-hover:bg-red-500 group-hover:w-1.5 group-hover:shadow-[2px_0_10px_rgba(239,68,68,0.3)]" />
                 <h3 className="font-black italic uppercase text-xl">Jaarvoorspelling</h3>
                 <p className="text-red-200/60 text-sm mt-1">Wie worden de kampioenen?</p>
               </div>
             </Link>
 
-            <div className="bg-[#161a23] border border-slate-800 p-6 rounded-2xl opacity-50 cursor-not-allowed">
+            <div className="bg-[#161a23] border-y border-r border-slate-800 p-6 rounded-r-2xl relative opacity-50 cursor-not-allowed">
+              <div className="absolute top-0 left-0 w-1 h-full bg-slate-800" />
               <h3 className="font-black italic uppercase text-xl text-slate-500">Leaderboard</h3>
               <p className="text-slate-600 text-sm mt-1">Binnenkort beschikbaar...</p>
             </div>
