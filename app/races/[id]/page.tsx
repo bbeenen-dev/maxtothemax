@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Toegevoegd voor refresh opties
+import { useRouter } from 'next/navigation';
 
 interface RaceData {
   id: string;
@@ -45,6 +45,12 @@ export default function RaceCardPage({ params }: PageProps) {
     const controller = new AbortController();
 
     async function getRaceAndStatus() {
+      // --- NIEUW: DE PLACEHOLDER GUARD ---
+      // Als raceId nog niet geladen is of de Next.js placeholder bevat (%%DRP...), stop dan hier.
+      if (!raceId || String(raceId).includes('%')) {
+        return;
+      }
+
       try {
         setLoading(true);
         setDbError(null);
@@ -64,7 +70,7 @@ export default function RaceCardPage({ params }: PageProps) {
 
         if (!isMounted) return;
 
-        // 3. Gebruik getSession in plaats van getUser (voorkomt AbortError in client)
+        // 3. Gebruik getSession in plaats van getUser
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user;
 
@@ -101,7 +107,6 @@ export default function RaceCardPage({ params }: PageProps) {
     };
   }, [raceId, supabase]);
 
-  // Render logica (Laden / Error / Content) blijft gelijk...
   if (loading) return (
     <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center">
       <div className="text-red-600 font-black italic animate-pulse text-2xl tracking-tighter">LADEN...</div>
@@ -129,10 +134,9 @@ export default function RaceCardPage({ params }: PageProps) {
         )}
 
         <div className="space-y-4">
-          {/* De links naar de individuele predict-schermen */}
           <Link href={`/races/${raceId}/predict/qualy`} className="block group">
             <div className={`bg-[#161a23] border-y border-r transition-all relative overflow-hidden p-6 rounded-r-2xl ${status.qualy ? 'border-green-500/30 bg-green-500/[0.02]' : 'border-slate-800'}`}>
-              <div className={`absolute top-0 left-0 w-1.5 h-full ${status.qualy ? 'bg-green-500 shadow-[2px_0_15px_rgba(34,197,94,0.5)]' : 'bg-red-600'}`} />
+              <div className={`absolute top-0 left-0 w-1.5 h-full ${status.qualy ? 'bg-green-500 shadow-[2px_0_15_rgba(34,197,94,0.5)]' : 'bg-red-600'}`} />
               <div className="flex justify-between items-center relative z-10">
                 <div>
                   <h2 className={`text-xl font-black italic uppercase ${status.qualy ? 'text-green-500' : 'group-hover:text-red-600'}`}>Qualifying</h2>
