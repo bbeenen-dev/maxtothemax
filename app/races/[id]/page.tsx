@@ -39,7 +39,7 @@ export default function RaceCardPage({ params }: PageProps) {
   });
 
   useEffect(() => {
-    // We maken een controller om het verzoek te kunnen annuleren als de component unmount
+    let isMounted = true;
     const controller = new AbortController();
 
     async function getRaceAndStatus() {
@@ -47,7 +47,7 @@ export default function RaceCardPage({ params }: PageProps) {
         setLoading(true);
         setDbError(null);
 
-        // 1. Haal eerst de race info op (publieke data)
+        // 1. Haal eerst de race info op (publieke data, zelden een Abort probleem)
         const { data: raceData, error: raceError } = await supabase
           .from('races')
           .select('id, race_name, sprint_race_start')
@@ -55,44 +55,54 @@ export default function RaceCardPage({ params }: PageProps) {
           .single();
 
         if (raceError) throw raceError;
-        setRace(raceData);
+        if (isMounted) setRace(raceData);
 
-        // 2. Haal de user op (dit kan de AbortError triggeren via de middleware)
+        // 2. KORTE PAUZE (100ms)
+        // Dit geeft de middleware/cookies rust om te settelen voor we de user-check doen
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (!isMounted) return;
+
+        // 3. Haal de user op
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError) {
             console.warn("Auth check waarschuwing:", userError.message);
-            // We stoppen hier niet perse, want de race info hebben we al.
         }
 
-        if (user) {
+        if (user && isMounted) {
+          // We doen de checks parallel voor snelheid
           const [qualyCheck, sprintCheck, raceCheck] = await Promise.all([
             supabase.from('predictions_qualifying').select('id').eq('race_id', raceId).eq('user_id', user.id).maybeSingle(),
             supabase.from('predictions_sprint').select('id').eq('race_id', raceId).eq('user_id', user.id).maybeSingle(),
             supabase.from('predictions_race').select('id').eq('race_id', raceId).eq('user_id', user.id).maybeSingle(),
           ]);
 
-          setStatus({
-            qualy: !!qualyCheck.data,
-            sprint: !!sprintCheck.data,
-            race: !!raceCheck.data
-          });
+          if (isMounted) {
+            setStatus({
+              qualy: !!qualyCheck.data,
+              sprint: !!sprintCheck.data,
+              race: !!raceCheck.data
+            });
+          }
         }
       } catch (err: any) {
-        // Alleen een error tonen als het GEEN abort is
-        if (err.name !== 'AbortError') {
+        // Alleen een error tonen als het GEEN abort-signaal is
+        if (err.name !== 'AbortError' && isMounted) {
           console.error("Database Error:", err);
           setDbError(err.message || "Er ging iets mis bij het ophalen van de data.");
         }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
 
     getRaceAndStatus();
 
-    // Cleanup functie om de AbortError te voorkomen bij snelle navigatie
-    return () => controller.abort();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [raceId, supabase]);
 
   if (loading) return (
@@ -122,7 +132,6 @@ export default function RaceCardPage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* ERROR SECTIE - Nu duidelijker zichtbaar indien aanwezig */}
         {dbError && (
           <div className="mb-6 p-4 bg-red-900/20 border-l-4 border-red-600 rounded-r-xl">
              <p className="text-red-500 text-[10px] uppercase font-black tracking-widest">
