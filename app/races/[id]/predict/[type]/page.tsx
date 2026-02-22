@@ -3,6 +3,7 @@
 import { useState, use, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Import toegevoegd
 
 interface Driver {
   driver_id: string;
@@ -17,6 +18,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const raceId = resolvedParams.id;
   const predictType = resolvedParams.type;
+  const router = useRouter(); // Router geïnitialiseerd
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +31,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
     race: "Hoofdrace Top 10"
   };
 
-  // Bijgewerkt naar de actuele 2026 Grid en jouw database veldnamen
   const initialDrivers: Driver[] = [
     { driver_id: "VER", driver_name: "Max Verstappen" },
     { driver_id: "LAW", driver_name: "Liam Lawson" },
@@ -64,7 +65,10 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Gebruik getSession voor client-side stabiliteit (minder AbortErrors)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
       setIsLoggedIn(!!user);
       if (!user) {
         setMessage("⚠️ Je bent niet ingelogd op dit toestel.");
@@ -98,7 +102,8 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      const user = session?.user;
       
       if (authError || !user) {
         setIsLoggedIn(false);
@@ -142,15 +147,16 @@ export default function UniversalPredictPage({ params }: PageProps) {
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
       
+      // CRUCIAAL STUKJE: Refresh de data en navigeer terug
       setTimeout(() => {
-        window.location.href = `/races/${raceId}`;
-      }, 1500);
+        router.refresh(); // Update de server-side cache
+        router.push(`/races/${raceId}`); // Navigeer naar de racecard
+      }, 1000);
       
     } catch (err: any) {
       setSaveStatus('error');
       setMessage(`❌ Fout: ${err.message || "Database error"}`);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Alleen resetten bij fout, anders de navigatie afwachten
     }
   };
 
@@ -164,7 +170,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
           &lt; Annuleren
         </Link>
 
-        {/* Verbeterde Racenaam display */}
         <div className="mb-2">
           <p className="text-slate-300 text-xs font-black uppercase tracking-[0.25em] italic leading-none">
             {raceName || "Laden..."}
