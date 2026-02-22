@@ -18,8 +18,7 @@ export default async function HomePage() {
 
   const nextRace = nextRaces?.[0];
 
-  // 3. Logica voor de kleur van de accentstreep (Groen als alles ingevuld is, anders Donkergrijs)
-  // Voor de HomePage checken we even snel of er voorspellingen zijn voor de 'Next Race'
+  // 3. Logica voor voorspelling status
   let isFullyPredicted = false;
   if (user && nextRace) {
     const [q, s, r] = await Promise.all([
@@ -33,9 +32,6 @@ export default async function HomePage() {
       ? (!!q.data && !!s.data && !!r.data)
       : (!!q.data && !!r.data);
   }
-
-  const accentColor = isFullyPredicted ? 'bg-green-500' : 'bg-slate-700';
-  const glowColor = isFullyPredicted ? 'shadow-[0_0_15px_rgba(34,197,94,0.4)]' : '';
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-white">
@@ -68,66 +64,74 @@ export default async function HomePage() {
       <div className="max-w-6xl mx-auto px-6 relative z-30 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* KAART 1: De Volgende Race */}
-          <div className="md:col-span-2 bg-[#161a23] border border-slate-800 rounded-3xl p-8 shadow-2xl overflow-hidden relative group">
-            
-            {/* De Ronde Accent Streep (Zwevend) */}
-            <div className={`absolute left-0 inset-y-6 w-1.5 rounded-full transition-all duration-500 ${accentColor} ${glowColor}`} />
-            
-            <div className="relative z-10 pl-4">
-              <span className={`${isFullyPredicted ? 'bg-green-500/20 text-green-500' : 'bg-slate-800 text-slate-400'} text-[10px] font-black uppercase px-3 py-1 rounded-full italic border border-current opacity-80`}>
-                {isFullyPredicted ? '✓ Completed' : 'Next Event'}
-              </span>
-              
-              <h2 className="text-4xl font-black italic uppercase mt-4 mb-2 tracking-tight">
-                {nextRace ? nextRace.race_name : "Geen races gevonden"}
-              </h2>
-              
-              <p className="text-slate-500 mb-8 uppercase tracking-widest text-sm font-bold">
-                {nextRace ? `Round ${nextRace.round} • ${nextRace.city_name || "Locatie onbekend"}` : ""}
-              </p>
+          {/* KAART 1: De Volgende Race met Tapered Border */}
+          <Link 
+            href={nextRace ? `/races/${nextRace.id}` : '#'}
+            className="md:col-span-2 group relative p-[2px] rounded-3xl transition-all duration-500 overflow-hidden block shadow-2xl"
+          >
+            {/* Tapered Gradient Border */}
+            <div className={`absolute inset-0 transition-opacity duration-500 ${
+              isFullyPredicted 
+                ? 'bg-[conic-gradient(from_180deg_at_0%_50%,#22c55e_0deg,#22c55e_40deg,transparent_90deg)] opacity-100' 
+                : 'bg-[conic-gradient(from_180deg_at_0%_50%,#475569_0deg,#475569_40deg,transparent_90deg)] opacity-80'
+            }`} />
+
+            <div className="relative bg-[#161a23] rounded-[calc(1.5rem-1px)] p-8 h-full">
+              <div className="relative z-10">
+                <span className={`${isFullyPredicted ? 'bg-green-500/20 text-green-500 border-green-500/50' : 'bg-slate-800 text-slate-400 border-slate-700'} text-[10px] font-black uppercase px-3 py-1 rounded-full italic border opacity-80`}>
+                  {isFullyPredicted ? '✓ Voorspelling voltooid' : 'Eerstvolgende race'}
+                </span>
+                
+                <h2 className="text-4xl md:text-5xl font-black italic uppercase mt-6 mb-2 tracking-tight group-hover:text-white transition-colors">
+                  {nextRace ? nextRace.race_name : "Geen races gevonden"}
+                </h2>
+                
+                <p className="text-slate-500 mb-10 uppercase tracking-[0.2em] text-sm font-bold">
+                  {nextRace ? `Round ${nextRace.round} • ${nextRace.city_name || "Locatie onbekend"}` : ""}
+                </p>
+
+                <div className="inline-block bg-white text-black font-black italic uppercase px-8 py-4 rounded-xl group-hover:bg-slate-200 transition-all shadow-lg active:scale-95">
+                  {isFullyPredicted ? 'Aanpassen →' : 'Nu Voorspellen →'}
+                </div>
+              </div>
 
               {nextRace && (
-                <Link
-                  href={`/races/${nextRace.id}`}
-                  className="inline-block bg-white text-black font-black italic uppercase px-8 py-4 rounded-xl hover:bg-slate-200 transition-all shadow-lg active:scale-95"
-                >
-                  {isFullyPredicted ? 'Bekijk voorspelling' : 'Voorspellen →'}
-                </Link>
+                <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.03] select-none pointer-events-none uppercase">
+                  {nextRace.city_name?.substring(0, 3) || nextRace.location_code}
+                </div>
               )}
             </div>
+          </Link>
 
-            {nextRace && (
-              <div className="absolute -right-10 -bottom-10 text-[12rem] font-black italic text-white/[0.02] select-none pointer-events-none uppercase">
-                {nextRace.city_name?.substring(0, 3) || nextRace.location_code}
-              </div>
-            )}
-          </div>
-
-          {/* KAART 2: Snelmenu */}
+          {/* KAART 2: Snelmenu met subtielere Tapered Borders */}
           <div className="space-y-6">
-            <Link href="/races" className="block group">
-              <div className="bg-[#1c232e] border border-slate-800 p-6 rounded-2xl relative overflow-hidden transition-all hover:bg-[#222936]">
-                <div className="absolute left-0 inset-y-4 w-1 bg-slate-700 rounded-full transition-all group-hover:bg-slate-400 group-hover:w-1.5" />
-                <h3 className="font-black italic uppercase text-xl pl-2">
+            <Link href="/races" className="block group relative p-[1px] rounded-2xl overflow-hidden transition-all">
+              {/* Menu Tapered Border - licht op bij hover */}
+              <div className="absolute inset-0 bg-[conic-gradient(from_180deg_at_0%_50%,#475569_0deg,#475569_20deg,transparent_60deg)] opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              <div className="relative bg-[#1c232e] p-6 rounded-[calc(1rem-1px)] transition-colors group-hover:bg-[#222936]">
+                <h3 className="font-black italic uppercase text-xl text-slate-200 group-hover:text-white">
                   Kalender
                 </h3>
-                <p className="text-slate-500 text-sm mt-1 pl-2 font-medium italic">Alle 24 races van 2026</p>
+                <p className="text-slate-500 text-sm mt-1 font-medium italic">Alle 24 races van 2026</p>
               </div>
             </Link>
 
-            <Link href="/predictions/season" className="block group">
-              <div className="bg-[#1c232e] border border-slate-800 p-6 rounded-2xl relative overflow-hidden transition-all hover:bg-[#222936]">
-                <div className="absolute left-0 inset-y-4 w-1 bg-slate-700 rounded-full transition-all group-hover:bg-slate-400 group-hover:w-1.5" />
-                <h3 className="font-black italic uppercase text-xl pl-2 text-slate-200">Jaarvoorspelling</h3>
-                <p className="text-slate-500 text-sm mt-1 pl-2 font-medium italic">Wie pakt de titel?</p>
+            <Link href="/predictions/season" className="block group relative p-[1px] rounded-2xl overflow-hidden transition-all">
+              <div className="absolute inset-0 bg-[conic-gradient(from_180deg_at_0%_50%,#475569_0deg,#475569_20deg,transparent_60deg)] opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              <div className="relative bg-[#1c232e] p-6 rounded-[calc(1rem-1px)] transition-colors group-hover:bg-[#222936]">
+                <h3 className="font-black italic uppercase text-xl text-slate-200 group-hover:text-white">Jaarvoorspelling</h3>
+                <p className="text-slate-500 text-sm mt-1 font-medium italic">Wie pakt de wereldtitel?</p>
               </div>
             </Link>
 
-            <div className="bg-[#161a23]/50 border border-slate-800/50 p-6 rounded-2xl relative opacity-40 grayscale">
-              <div className="absolute left-0 inset-y-4 w-1 bg-slate-800 rounded-full" />
-              <h3 className="font-black italic uppercase text-xl pl-2 text-slate-500">Leaderboard</h3>
-              <p className="text-slate-600 text-sm mt-1 pl-2">Coming Soon</p>
+            <div className="opacity-40 grayscale block relative p-[1px] rounded-2xl overflow-hidden cursor-not-allowed">
+               <div className="absolute inset-0 bg-slate-800 opacity-20" />
+               <div className="relative bg-[#161a23] p-6 rounded-[calc(1rem-1px)]">
+                <h3 className="font-black italic uppercase text-xl text-slate-500">Leaderboard</h3>
+                <p className="text-slate-600 text-sm mt-1">Coming Soon</p>
+              </div>
             </div>
           </div>
         </div>
