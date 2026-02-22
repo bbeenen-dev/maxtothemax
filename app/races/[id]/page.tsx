@@ -39,9 +39,15 @@ export default function RaceCardPage({ params }: PageProps) {
   });
 
   useEffect(() => {
+    // We maken een controller om het verzoek te kunnen annuleren als de component unmount
+    const controller = new AbortController();
+
     async function getRaceAndStatus() {
       try {
         setLoading(true);
+        setDbError(null);
+
+        // 1. Haal eerst de race info op (publieke data)
         const { data: raceData, error: raceError } = await supabase
           .from('races')
           .select('id, race_name, sprint_race_start')
@@ -51,7 +57,13 @@ export default function RaceCardPage({ params }: PageProps) {
         if (raceError) throw raceError;
         setRace(raceData);
 
-        const { data: { user } } = await supabase.auth.getUser();
+        // 2. Haal de user op (dit kan de AbortError triggeren via de middleware)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+            console.warn("Auth check waarschuwing:", userError.message);
+            // We stoppen hier niet perse, want de race info hebben we al.
+        }
 
         if (user) {
           const [qualyCheck, sprintCheck, raceCheck] = await Promise.all([
@@ -67,13 +79,20 @@ export default function RaceCardPage({ params }: PageProps) {
           });
         }
       } catch (err: any) {
-        console.error("Database Error:", err);
-        setDbError(err.message);
+        // Alleen een error tonen als het GEEN abort is
+        if (err.name !== 'AbortError') {
+          console.error("Database Error:", err);
+          setDbError(err.message || "Er ging iets mis bij het ophalen van de data.");
+        }
       } finally {
         setLoading(false);
       }
     }
+
     getRaceAndStatus();
+
+    // Cleanup functie om de AbortError te voorkomen bij snelle navigatie
+    return () => controller.abort();
   }, [raceId, supabase]);
 
   if (loading) return (
@@ -103,6 +122,21 @@ export default function RaceCardPage({ params }: PageProps) {
           </p>
         </div>
 
+        {/* ERROR SECTIE - Nu duidelijker zichtbaar indien aanwezig */}
+        {dbError && (
+          <div className="mb-6 p-4 bg-red-900/20 border-l-4 border-red-600 rounded-r-xl">
+             <p className="text-red-500 text-[10px] uppercase font-black tracking-widest">
+               Fout bij laden: {dbError}
+             </p>
+             <button 
+               onClick={() => window.location.reload()}
+               className="text-white text-[8px] underline mt-2 uppercase font-bold"
+             >
+               Klik hier om te verversen
+             </button>
+          </div>
+        )}
+
         <div className="space-y-4">
           {/* QUALIFYING */}
           <Link href={`/races/${raceId}/predict/qualy`} className="block group">
@@ -111,7 +145,6 @@ export default function RaceCardPage({ params }: PageProps) {
                 ? 'border-green-500/30 bg-green-500/[0.02]' 
                 : 'border-slate-800 hover:border-red-600/50'
             }`}>
-              {/* De Dikkere Linkerstreep (Accent) */}
               <div className={`absolute top-0 left-0 w-1.5 h-full transition-all duration-300 ${
                 status.qualy 
                   ? 'bg-green-500 shadow-[2px_0_15px_rgba(34,197,94,0.5)]' 
@@ -126,14 +159,7 @@ export default function RaceCardPage({ params }: PageProps) {
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Top 3 Shootout</p>
                 </div>
                 {status.qualy && (
-                  <div className="flex flex-col items-end">
-                    <span className="text-green-500 font-black text-xs italic">READY</span>
-                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
+                   <span className="text-green-500 font-black text-xs italic tracking-tighter">READY</span>
                 )}
               </div>
             </div>
@@ -160,14 +186,7 @@ export default function RaceCardPage({ params }: PageProps) {
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">Zaterdag-race</p>
                   </div>
                   {status.sprint && (
-                    <div className="flex flex-col items-end">
-                      <span className="text-green-500 font-black text-xs italic">READY</span>
-                      <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    </div>
+                    <span className="text-green-500 font-black text-xs italic tracking-tighter">READY</span>
                   )}
                 </div>
               </div>
@@ -194,25 +213,12 @@ export default function RaceCardPage({ params }: PageProps) {
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Hoofdrace Top 10</p>
                 </div>
                 {status.race && (
-                  <div className="flex flex-col items-end">
-                    <span className="text-green-500 font-black text-xs italic">READY</span>
-                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-[#0b0e14]" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
+                  <span className="text-green-500 font-black text-xs italic tracking-tighter">READY</span>
                 )}
               </div>
             </div>
           </Link>
         </div>
-
-        {dbError && (
-          <div className="mt-10 p-4 bg-red-900/20 border-l-4 border-red-600 rounded-r-xl text-red-500 text-[10px] uppercase font-black tracking-widest">
-            Fout bij laden: {dbError}
-          </div>
-        )}
 
         {!race?.sprint_race_start && !loading && !dbError && (
           <div className="mt-12 pt-8 border-t border-slate-900 text-center">
