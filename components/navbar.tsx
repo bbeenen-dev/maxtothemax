@@ -24,16 +24,22 @@ export function Navbar() {
         return;
       }
       
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
-      
-      setIsAdmin(profile?.is_admin ?? false);
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userId)
+          .single();
+        
+        setIsAdmin(profile?.is_admin ?? false);
+      } catch (err) {
+        console.error("Fout bij ophalen admin status:", err);
+        setIsAdmin(false);
+      }
     };
 
     const getUser = async () => {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       setUserEmail(user?.email ?? null);
       await checkUserStatus(user?.id);
@@ -44,7 +50,11 @@ export function Navbar() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUserEmail(session?.user?.email ?? null);
-      await checkUserStatus(session?.user?.id);
+      if (session?.user) {
+        await checkUserStatus(session.user.id);
+      } else {
+        setIsAdmin(false);
+      }
       setLoading(false);
     });
 
@@ -52,9 +62,10 @@ export function Navbar() {
   }, [supabase]);
 
   const handleLogout = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
-    // Aangepast naar jouw mappenstructuur
-    router.push('/auth/login');
+    // BELANGRIJK: Omdat (auth) een route group is, is de URL simpelweg /login
+    router.push('/login');
     router.refresh();
   };
 
@@ -133,9 +144,9 @@ export function Navbar() {
               </button>
             ) : (
               <Link 
-                // Aangepast naar jouw mappenstructuur
-                href="/auth/login" 
-                className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                // VERBETERD: href is /login (Next.js negeert de (auth) mapnaam in de URL)
+                href="/login" 
+                className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-lg shadow-white/5"
               >
                 Login
               </Link>
