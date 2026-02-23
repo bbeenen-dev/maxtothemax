@@ -38,19 +38,17 @@ export default function RootLayout({
           forcedTheme="dark"
           disableTransitionOnChange
         >
-          {/* De Navbar MOET in Suspense omdat deze client-side hooks (useRouter) gebruikt */}
+          {/* We laten Suspense alleen rond de Navbar staan voor de client-side hooks */}
           <Suspense fallback={<div className="h-16 w-full bg-[#0b0e14] border-b border-white/5" />}>
             <Navbar />
           </Suspense>
 
           <main className="pt-2">
-            <Suspense fallback={
-              <div className="p-12 text-white text-center font-bold italic uppercase tracking-widest opacity-20">
-                Laden...
-              </div>
-            }>
-              {children}
-            </Suspense>
+            {/* VERBETERING: De globale Suspense rond {children} is verwijderd.
+                Dit voorkomt dat de hele applicatie 'bevriest' op het rode "Laden..." scherm
+                wanneer Next.js wacht op server-side data of middleware responses.
+            */}
+            {children}
           </main>
         </ThemeProvider>
       </body>
