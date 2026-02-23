@@ -1,24 +1,22 @@
 "use client";
 
-import { useState, use, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
 interface Driver {
   driver_id: string;
   driver_name: string;
 }
 
-interface PageProps {
-  params: Promise<{ id: string; type: string }>;
-}
-
-export default function UniversalPredictPage({ params }: PageProps) {
-  const resolvedParams = use(params);
-  const raceId = resolvedParams.id;
-  const predictType = resolvedParams.type;
+export default function UniversalPredictPage() {
+  const params = useParams();
   const router = useRouter();
+  
+  // Haal params direct uit useParams()
+  const raceId = params?.id as string;
+  const predictType = params?.type as string;
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,18 +63,12 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      // --- WIJZIGING 1: PLACEHOLDER GUARD IN USEEFFECT ---
-      if (!raceId || String(raceId).includes('%') || String(raceId).includes('DRP')) {
-        return;
-      }
+      // GUARD: Wacht tot raceId echt beschikbaar is en geen placeholder meer is
+      if (!raceId || raceId.includes('%') || raceId.includes('DRP')) return;
 
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session?.user);
       
-      if (!session?.user) {
-        setMessage("⚠️ Je bent niet ingelogd.");
-      }
-
       const { data: raceData } = await supabase
         .from('races')
         .select('race_name')
@@ -97,28 +89,25 @@ export default function UniversalPredictPage({ params }: PageProps) {
   };
 
   const handleSave = async () => {
-    // --- WIJZIGING 2: PLACEHOLDER GUARD IN HANDLESAVE ---
-    if (!raceId || String(raceId).includes('%') || String(raceId).includes('DRP')) {
-      setMessage("⚠️ Pagina nog aan het laden... probeer het over een seconde opnieuw.");
+    // Check op geldige raceId voor database opslag
+    if (!raceId || raceId.includes('%') || raceId.includes('DRP')) {
+      setMessage("⚠️ Race-informatie wordt nog geladen. Probeer het over een seconde opnieuw.");
       return;
     }
 
     if (loading) return;
-    
     setLoading(true);
     setSaveStatus('idle');
     setMessage("⏳ Bezig met opslaan...");
 
     try {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
-      
       if (authError || !session?.user) {
         setIsLoggedIn(false);
         throw new Error("Sessie verlopen. Log opnieuw in.");
       }
 
       const user = session.user;
-
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
@@ -137,7 +126,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
         .from(tableName)
         .upsert({
           user_id: user.id,
-          race_id: raceId,
+          race_id: parseInt(raceId), // Expliciet naar integer om syntax errors te voorkomen
           [config.col]: topDriversIds,
         }, { onConflict: 'user_id, race_id' });
 
