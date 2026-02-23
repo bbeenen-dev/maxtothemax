@@ -10,9 +10,13 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll();
+        },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -22,39 +26,52 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 1. Haal de user op (dit ververst ook de sessie-cookie indien nodig)
+  // 1. Verifieer de gebruiker en ververs de sessie
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  // 2. Definieer strikte uitsluitingen voor de middleware
+  // 2. Definieer uitsluitingen
   const isAuthPage = pathname.startsWith("/auth");
   const isPublicPage = pathname === "/" || pathname === "/races";
-  const isStaticFile = pathname.includes('.') || pathname.startsWith('/_next');
   
-  // 3. KRUCIALE FIX: Sla de middleware over voor Next.js interne data-verzoeken
-  // Als we dit niet doen, krijgt een 'prefetch' verzoek een redirect terug en bevriest de UI op "Laden"
-  const isNextDataRequest = request.headers.get('x-nextjs-data') || pathname.startsWith('/_next/data');
+  // Check voor statische bestanden en Next.js interne verzoeken
+  const isStaticFile = pathname.includes('.') || pathname.startsWith('/_next/static');
+  const isNextDataRequest = 
+    request.headers.get('x-nextjs-data') || 
+    pathname.startsWith('/_next/data') ||
+    pathname.includes('_next/image');
 
+  // KRUCIALE FIX: Laat data-requests en statische bestanden ALTIJD door zonder redirects
+  // Dit voorkomt dat de UI bevriest op een "Laden" scherm tijdens navigatie
   if (isStaticFile || isNextDataRequest) {
     return supabaseResponse;
   }
 
-  // 4. Redirect logica
-  // Alleen redirecten naar login als er GEEN user is en het GEEN publieke of auth pagina is
+  // 3. Redirect logica voor niet-ingelogde gebruikers
   if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
-    // Voorkom oneindige loops door te checken of we niet al naar login gaan
+    // Onthoud waar de gebruiker heen wilde
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  // 5. Redirect ingelogde gebruikers weg van de loginpagina
+  // 4. Redirect ingelogde gebruikers weg van login/registratie pagina's
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/races";
     return NextResponse.redirect(url);
   }
+
+  // 5. CACHE CONTROL: Voorkom dat de browser oude "loading" statussen opslaat
+  // Dit dwingt de browser om bij elke navigatie de meest verse data te vragen
+  supabaseResponse.headers.set(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, proxy-revalidate'
+  );
+  supabaseResponse.headers.set('Pragma', 'no-cache');
+  supabaseResponse.headers.set('Expires', '0');
 
   return supabaseResponse;
 }

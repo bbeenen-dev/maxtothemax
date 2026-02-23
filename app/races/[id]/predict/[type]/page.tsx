@@ -20,7 +20,6 @@ export default function UniversalPredictPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // 1. Validatie van de ID (Voorkomt de %%DRP fout en syntax errors)
   const raceId = parseInt(raceIdStr);
   const isValidRaceId = !isNaN(raceId) && !raceIdStr.includes('%');
 
@@ -83,7 +82,6 @@ export default function UniversalPredictPage() {
   };
 
   const handleSave = async () => {
-    // Extra veiligheidscheck voor raceId
     if (!isValidRaceId) {
       alert("Fout: De race-informatie is nog niet volledig geladen.");
       return;
@@ -93,7 +91,6 @@ export default function UniversalPredictPage() {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      // Gebruik getSession voor de meest stabiele client-side auth check
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -116,7 +113,7 @@ export default function UniversalPredictPage() {
 
       const { error: dbError } = await supabase.from(tableName).upsert({
         user_id: session.user.id,
-        race_id: raceId, // Hier sturen we nu gegarandeerd een integer
+        race_id: raceId,
         [config.col]: topDriversIds,
       }, { onConflict: 'user_id, race_id' });
 
@@ -124,10 +121,10 @@ export default function UniversalPredictPage() {
 
       setMessage("✅ Voorspelling opgeslagen! Je wordt teruggeleid...");
       
-      // DE FIX VOOR HET ZWARTE SCHERM: 
-      // Gebruik window.location.replace voor een volledige browser-refresh naar de racepagina.
-      // Dit zorgt dat de middleware de sessie weer vers oppakt zonder Next.js navigatie-bugs.
-      window.location.replace(`/races/${raceId}`);
+      // VERBETERING: Wacht 500ms en dwing een cache-vrije navigatie af
+      setTimeout(() => {
+        window.location.href = `/races/${raceId}?t=${Date.now()}`;
+      }, 500);
 
     } catch (err: any) {
       console.error("Save error:", err);
