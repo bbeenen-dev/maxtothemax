@@ -65,7 +65,11 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Gebruik getSession (leest uit cookie/storage zonder de server direct te dwingen tot refresh)
+      // --- WIJZIGING 1: PLACEHOLDER GUARD IN USEEFFECT ---
+      if (!raceId || String(raceId).includes('%') || String(raceId).includes('DRP')) {
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session?.user);
       
@@ -93,6 +97,12 @@ export default function UniversalPredictPage({ params }: PageProps) {
   };
 
   const handleSave = async () => {
+    // --- WIJZIGING 2: PLACEHOLDER GUARD IN HANDLESAVE ---
+    if (!raceId || String(raceId).includes('%') || String(raceId).includes('DRP')) {
+      setMessage("⚠️ Pagina nog aan het laden... probeer het over een seconde opnieuw.");
+      return;
+    }
+
     if (loading) return;
     
     setLoading(true);
@@ -100,7 +110,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
     setMessage("⏳ Bezig met opslaan...");
 
     try {
-      // 1. Haal sessie op (meest stabiele methode voor client-side writes)
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       
       if (authError || !session?.user) {
@@ -110,7 +119,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
       const user = session.user;
 
-      // 2. Bepaal tabel en kolom
       const tableName = {
         qualy: "predictions_qualifying",
         sprint: "predictions_sprint",
@@ -125,7 +133,6 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
       const topDriversIds = drivers.slice(0, config.count).map(d => d.driver_id);
 
-      // 3. Voer de upsert uit
       const { error: dbError } = await supabase
         .from(tableName)
         .upsert({
@@ -136,11 +143,9 @@ export default function UniversalPredictPage({ params }: PageProps) {
 
       if (dbError) throw dbError;
 
-      // 4. Succes afhandeling
       setSaveStatus('success');
       setMessage("✅ Voorspelling succesvol opgeslagen!");
       
-      // 5. Navigatie (wacht kort zodat gebruiker het succes ziet)
       setTimeout(() => {
         router.refresh(); 
         router.push(`/races/${raceId}`);
@@ -150,7 +155,7 @@ export default function UniversalPredictPage({ params }: PageProps) {
       console.error("Save error:", err);
       setSaveStatus('error');
       setMessage(`❌ Fout: ${err.message || "Er ging iets mis"}`);
-      setLoading(false); // Alleen bij fout de knop weer activeren
+      setLoading(false);
     }
   };
 
