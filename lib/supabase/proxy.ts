@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
-  // We maken een basis-respons aan
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -10,14 +9,9 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          // We vernieuwen de response alleen als dat nodig is voor de browser cookies
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -27,37 +21,31 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Verifieer de gebruiker
+  // Belangrijk: getUser ververst de sessie als dat nodig is
   const { data: { user } } = await supabase.auth.getUser();
 
-  // PAD-DEFINITIES
   const { pathname } = request.nextUrl;
   
+  // URL definities
   const isAuthPage = pathname.startsWith("/auth");
-  const isPublicPage = pathname === "/" || pathname === "/races";
+  const isPublicPage = pathname === "/" || pathname === "/races" || pathname.startsWith("/public");
   
-  // NIEUW: Voorkom dat statische bestanden (CSS, JS, afbeeldingen) worden geblokkeerd
-  // Zonder dit blijft je scherm wit omdat de browser de styling niet mag ophalen
-  const isStaticAsset = 
-    pathname.startsWith("/_next") || 
-    pathname.includes("/favicon.ico") ||
-    pathname.includes("."); // Checkt voor bestandsextensies zoals .css, .js, .png
+  // KRUCIALE FIX: Sla de middleware over voor Next.js interne verzoeken
+  // Dit voorkomt het zwarte "Laden" scherm tijdens navigatie
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.includes('/api/') || 
+    request.headers.get('x-nextjs-data')
+  ) {
+    return supabaseResponse;
+  }
 
-  // Check of dit een achtergrond-dataverzoek van Next.js is (RSC/Prefetch)
-  const isDataRequest = 
-    request.headers.get("x-nextjs-data") || 
-    pathname.startsWith("/_next/data");
-
-  // REDIRECT LOGICA
-  // We redirecten NOOIT als:
-  // 1. Er een user is
-  // 2. Je al op een auth-pagina bent
-  // 3. Het een publieke pagina is
-  // 4. Het een data-request is (voorkomt AbortError)
-  // 5. Het een statisch bestand is (voorkomt wit scherm)
-  if (!user && !isAuthPage && !isPublicPage && !isDataRequest && !isStaticAsset) {
+  // Redirect logica: alleen voor echte pagina-bezoeken
+  if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    // Voeg de originele url toe zodat je na login terugkomt waar je was
+    url.searchParams.set("next", pathname); 
     return NextResponse.redirect(url);
   }
 
