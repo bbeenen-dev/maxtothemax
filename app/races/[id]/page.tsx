@@ -1,3 +1,6 @@
+// races [id] page
+export const dynamic = "force-dynamic";
+
 "use client";
 
 import { use, useEffect, useState } from 'react';
